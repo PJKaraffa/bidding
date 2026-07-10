@@ -179,3 +179,25 @@ th {
 tr:nth-child(even) {
   background: #f8fafc;
 }
+.bid-header {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    cursor:pointer;
+    user-select:none;
+}
+
+.bid-details{
+    overflow:hidden;
+    transition:max-height .35s ease;
+}
+
+.bid-details.collapsed{
+    max-height:0;
+    padding:0;
+    margin:0;
+}
+
+.bid-details.expanded{
+    max-height:3000px;
+}
