@@ -72,7 +72,17 @@
         </div>
       </div>
 
-      <button onclick="createBid()">Post Bid</button>
+      <div class="form-actions">
+  <button id="saveBidButton" onclick="saveBid()">Post Bid</button>
+
+  <button
+    id="cancelEditButton"
+    class="gray hidden"
+    onclick="cancelBidEdit()"
+  >
+    Cancel Edit
+  </button>
+</div>
     </section>
 
     <section class="card">
