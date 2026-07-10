@@ -447,7 +447,10 @@ async function getMyBid(bidId) {
 
   return data;
 }
-}
+
+async function getAdminSubmissions(bidId) {
+  const { data, error } = await supabaseClient
+    .from("bid_submissions")
 
 async function getAdminSubmissions(bidId) {
   const { data, error } = await supabaseClient
