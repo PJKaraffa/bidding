@@ -32,20 +32,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 async function login() {
   const email = document.getElementById("email").value.trim();
-  const password = document.getElementById("password").value;
+  const password = document.getElementById("password").value.trim();
   const message = document.getElementById("loginMessage");
 
   message.textContent = "";
 
-  if (!email || !password) {
-    message.textContent = "Please enter your email and password.";
-    return;
-  }
-
-  const { data, error } = await supabaseClient.auth.signInWithPassword({
-    email,
-    password
-  });
+  const { data, error } =
+    await supabaseClient.auth.signInWithPassword({
+      email,
+      password
+    });
 
   if (error) {
     message.textContent = error.message;
@@ -54,13 +50,24 @@ async function login() {
 
   currentUser = data.user;
 
-  if (!(await ensureProfile()) || !(await loadProfile())) {
+  const profileReady = await ensureProfile();
+
+  if (!profileReady) {
+    await supabaseClient.auth.signOut();
+    showLogin();
+    return;
+  }
+
+  const profileLoaded = await loadProfile();
+
+  if (!profileLoaded) {
+    await supabaseClient.auth.signOut();
+    showLogin();
     return;
   }
 
   showApp();
 }
-
 async function logout() {
   const { error } = await supabaseClient.auth.signOut();
 
@@ -112,8 +119,8 @@ async function ensureProfile() {
     .maybeSingle();
 
   if (error) {
-    console.error("Profile lookup error:", error.message);
-    alert("Unable to check your profile.");
+    console.error("Profile lookup error:", error);
+    alert(`Profile error: ${error.message}`);
     return false;
   }
 
@@ -128,15 +135,14 @@ async function ensureProfile() {
       });
 
     if (insertError) {
-      console.error("Profile creation error:", insertError.message);
-      alert(insertError.message);
+      console.error("Profile creation error:", insertError);
+      alert(`Profile creation error: ${insertError.message}`);
       return false;
     }
   }
 
   return true;
 }
-
 async function loadProfile() {
   const { data, error } = await supabaseClient
     .from("profiles")
