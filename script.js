@@ -45,57 +45,73 @@ document.addEventListener("DOMContentLoaded", async () => {
 ========================================================= */
 
 async function login() {
-  const email = document
-    .getElementById("email")
-    .value
-    .trim();
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+  const message = document.getElementById("loginMessage");
 
-  const password = document
-    .getElementById("password")
-    .value;
-
-  showLoginMessage("");
-
-  if (!email || !password) {
-    showLoginMessage("Please enter your email and password.");
-    return;
-  }
+  message.textContent = "Attempting login...";
 
   try {
+    console.log("Starting login for:", email);
+    console.log("Supabase client:", supabaseClient);
+
     const { data, error } =
       await supabaseClient.auth.signInWithPassword({
         email,
         password
       });
 
+    console.log("Login data:", data);
+    console.log("Login error:", error);
+
     if (error) {
-      console.error("Login error:", error);
-      showLoginMessage(error.message);
+      message.textContent = `Login error: ${error.message}`;
       return;
     }
 
-    if (!data.user) {
-      showLoginMessage("Login succeeded, but no user account was returned.");
+    if (!data.session || !data.user) {
+      message.textContent =
+        "Supabase did not return a valid user session.";
       return;
     }
 
     currentUser = data.user;
 
-    const profileLoaded = await getCurrentProfile();
+    message.textContent = "Login successful. Loading profile...";
 
-    if (!profileLoaded) {
+    const { data: profile, error: profileError } =
+      await supabaseClient
+        .from("profiles")
+        .select("*")
+        .eq("id", currentUser.id)
+        .maybeSingle();
+
+    console.log("Profile:", profile);
+    console.log("Profile error:", profileError);
+
+    if (profileError) {
+      message.textContent =
+        `Profile error: ${profileError.message}`;
       return;
     }
 
+    if (!profile) {
+      message.textContent =
+        "Login worked, but this user does not have a profile record.";
+      return;
+    }
+
+    currentProfile = profile;
+    message.textContent = "";
+
     showApp();
   } catch (error) {
-    console.error("Login exception:", error);
-    showLoginMessage(
-      error.message || "An unexpected login error occurred."
-    );
+    console.error("Unexpected login error:", error);
+
+    message.textContent =
+      `Unexpected error: ${error.message}`;
   }
 }
-
 /* =========================================================
    LOGOUT
 ========================================================= */
