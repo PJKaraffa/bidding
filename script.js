@@ -416,9 +416,20 @@ async function getLowBid(bidId) {
 }
 
 async function getMyBid(bidId) {
+  if (currentProfile.role !== "vendor") {
+    return null;
+  }
+
   const { data, error } = await supabaseClient
     .from("bid_submissions")
-    .select("id, bid_id, vendor_id, amount, notes, created_at, updated_at")
+    .select(`
+      id,
+      bid_id,
+      vendor_id,
+      amount,
+      notes,
+      created_at
+    `)
     .eq("bid_id", bidId)
     .eq("vendor_id", currentUser.id)
     .maybeSingle();
@@ -429,6 +440,7 @@ async function getMyBid(bidId) {
   }
 
   return data;
+}
 }
 
 async function getAdminSubmissions(bidId) {
