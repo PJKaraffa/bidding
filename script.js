@@ -1,5 +1,6 @@
 let currentUser = null;
 let currentProfile = null;
+let editingBidId = null;
 
 /* =========================================================
    START APPLICATION
@@ -183,9 +184,9 @@ async function loadProfile() {
    CREATE TRANSPORTATION BID
 ========================================================= */
 
-async function createBid() {
+async function saveBid() {
   if (currentProfile.role !== "admin") {
-    alert("Only administrators can create bids.");
+    alert("Only administrators can create or edit bids.");
     return;
   }
 
@@ -197,8 +198,8 @@ async function createBid() {
   const school = document.getElementById("school").value.trim();
   const schoolStartTime = document.getElementById("schoolStartTime").value;
   const serviceDate = document.getElementById("serviceDate").value;
-  const openDate = document.getElementById("bidOpenDate").value;
-  const closeDate = document.getElementById("bidCloseDate").value;
+  const openDateLocal = document.getElementById("bidOpenDate").value;
+  const closeDateLocal = document.getElementById("bidCloseDate").value;
 
   if (
     !title ||
@@ -208,69 +209,81 @@ async function createBid() {
     !school ||
     !schoolStartTime ||
     !serviceDate ||
-    !openDate ||
-    !closeDate
+    !openDateLocal ||
+    !closeDateLocal
   ) {
     alert("Please complete all required bid fields.");
     return;
   }
 
-  const openDateObject = new Date(openDate);
-  const closeDateObject = new Date(closeDate);
+  const openDateObject = new Date(openDateLocal);
+  const closeDateObject = new Date(closeDateLocal);
+
+  if (
+    Number.isNaN(openDateObject.getTime()) ||
+    Number.isNaN(closeDateObject.getTime())
+  ) {
+    alert("Please enter valid bid open and close dates.");
+    return;
+  }
 
   if (closeDateObject <= openDateObject) {
     alert("The bid close date must be later than the bid open date.");
     return;
   }
 
-  const { error } = await supabaseClient
-    .from("transportation_bids")
-    .insert({
-      title,
-      description,
-      student_id: studentId,
-      street_address: streetAddress,
-      pickup_time: pickupTime,
-      school,
-      school_start_time: schoolStartTime,
-      service_date: serviceDate,
-      bid_open_date: openDate,
-      bid_close_date: closeDate,
-      created_by: currentUser.id,
-      status: "open"
-    });
+  /*
+    Convert local datetime-local values to UTC ISO strings
+    before saving them to Supabase.
+  */
+  const bidData = {
+    title,
+    description,
+    student_id: studentId,
+    street_address: streetAddress,
+    pickup_time: pickupTime,
+    school,
+    school_start_time: schoolStartTime,
+    service_date: serviceDate,
+    bid_open_date: openDateObject.toISOString(),
+    bid_close_date: closeDateObject.toISOString()
+  };
+
+  let error;
+
+  if (editingBidId) {
+    const result = await supabaseClient
+      .from("transportation_bids")
+      .update(bidData)
+      .eq("id", editingBidId);
+
+    error = result.error;
+  } else {
+    const result = await supabaseClient
+      .from("transportation_bids")
+      .insert({
+        ...bidData,
+        created_by: currentUser.id,
+        status: "open"
+      });
+
+    error = result.error;
+  }
 
   if (error) {
-    console.error("Create bid error:", error.message);
+    console.error("Save bid error:", error.message);
     alert(error.message);
     return;
   }
 
-  clearBidForm();
+  alert(
+    editingBidId
+      ? "The transportation bid was updated."
+      : "The transportation bid was posted."
+  );
+
+  cancelBidEdit();
   await loadBids();
-}
-
-function clearBidForm() {
-  const fields = [
-    "bidTitle",
-    "bidDescription",
-    "studentId",
-    "streetAddress",
-    "pickupTime",
-    "school",
-    "schoolStartTime",
-    "serviceDate",
-    "bidOpenDate",
-    "bidCloseDate"
-  ];
-
-  fields.forEach(id => {
-    const element = document.getElementById(id);
-
-    if (element) {
-      element.value = "";
-    }
-  });
 }
 
 /* =========================================================
@@ -1207,4 +1220,98 @@ function escapeHTML(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+function clearBidForm() {
+  const fields = [
+    "bidTitle",
+    "bidDescription",
+    "studentId",
+    "streetAddress",
+    "pickupTime",
+    "school",
+    "schoolStartTime",
+    "serviceDate",
+    "bidOpenDate",
+    "bidCloseDate"
+  ];
+
+  fields.forEach(id => {
+    const element = document.getElementById(id);
+
+    if (element) {
+      element.value = "";
+    }
+  });
+}
+async function editBid(bidId) {
+  if (currentProfile.role !== "admin") {
+    alert("Only administrators can edit bids.");
+    return;
+  }
+
+  const { data: bid, error } = await supabaseClient
+    .from("transportation_bids")
+    .select("*")
+    .eq("id", bidId)
+    .single();
+
+  if (error) {
+    console.error("Load bid for editing error:", error.message);
+    alert(error.message);
+    return;
+  }
+
+  editingBidId = bidId;
+
+  document.getElementById("bidTitle").value = bid.title || "";
+  document.getElementById("bidDescription").value = bid.description || "";
+  document.getElementById("studentId").value = bid.student_id || "";
+  document.getElementById("streetAddress").value = bid.street_address || "";
+  document.getElementById("pickupTime").value =
+    normalizeTimeForInput(bid.pickup_time);
+
+  document.getElementById("school").value = bid.school || "";
+
+  document.getElementById("schoolStartTime").value =
+    normalizeTimeForInput(bid.school_start_time);
+
+  document.getElementById("serviceDate").value =
+    bid.service_date || "";
+
+  /*
+    Convert Supabase UTC timestamps back to the user's
+    local time for datetime-local inputs.
+  */
+  document.getElementById("bidOpenDate").value =
+    isoToLocalDateTimeInput(bid.bid_open_date);
+
+  document.getElementById("bidCloseDate").value =
+    isoToLocalDateTimeInput(bid.bid_close_date);
+
+  const saveButton = document.getElementById("saveBidButton");
+  const cancelButton = document.getElementById("cancelEditButton");
+
+  saveButton.textContent = "Update Bid";
+  cancelButton.classList.remove("hidden");
+
+  document.getElementById("adminPanel").scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
+}
+
+function cancelBidEdit() {
+  editingBidId = null;
+  clearBidForm();
+
+  const saveButton = document.getElementById("saveBidButton");
+  const cancelButton = document.getElementById("cancelEditButton");
+
+  if (saveButton) {
+    saveButton.textContent = "Post Bid";
+  }
+
+  if (cancelButton) {
+    cancelButton.classList.add("hidden");
+  }
 }
