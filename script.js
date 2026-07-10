@@ -32,7 +32,6 @@ async function login() {
   }
 
   currentUser = data.user;
-
   await ensureProfile();
   await loadProfile();
   showApp();
@@ -40,10 +39,8 @@ async function login() {
 
 async function logout() {
   await supabaseClient.auth.signOut();
-
   currentUser = null;
   currentProfile = null;
-
   showLogin();
 }
 
@@ -59,11 +56,10 @@ function showApp() {
   document.getElementById("welcomeMessage").textContent =
     `${currentUser.email} | Role: ${currentProfile.role}`;
 
-  if (currentProfile.role === "admin") {
-    document.getElementById("adminPanel").classList.remove("hidden");
-  } else {
-    document.getElementById("adminPanel").classList.add("hidden");
-  }
+  document.getElementById("adminPanel").classList.toggle(
+    "hidden",
+    currentProfile.role !== "admin"
+  );
 
   loadBids();
 }
@@ -103,13 +99,11 @@ async function loadProfile() {
 async function createBid() {
   const title = document.getElementById("bidTitle").value.trim();
   const description = document.getElementById("bidDescription").value.trim();
-
   const studentId = document.getElementById("studentId").value.trim();
   const streetAddress = document.getElementById("streetAddress").value.trim();
   const pickupTime = document.getElementById("pickupTime").value;
   const school = document.getElementById("school").value.trim();
   const schoolStartTime = document.getElementById("schoolStartTime").value;
-
   const serviceDate = document.getElementById("serviceDate").value;
   const openDate = document.getElementById("bidOpenDate").value;
   const closeDate = document.getElementById("bidCloseDate").value;
@@ -119,22 +113,20 @@ async function createBid() {
     return;
   }
 
-  const { error } = await supabaseClient
-    .from("transportation_bids")
-    .insert({
-      title,
-      description,
-      student_id: studentId,
-      street_address: streetAddress,
-      pickup_time: pickupTime || null,
-      school,
-      school_start_time: schoolStartTime || null,
-      service_date: serviceDate || null,
-      bid_open_date: openDate,
-      bid_close_date: closeDate,
-      created_by: currentUser.id,
-      status: "open"
-    });
+  const { error } = await supabaseClient.from("transportation_bids").insert({
+    title,
+    description,
+    student_id: studentId,
+    street_address: streetAddress,
+    pickup_time: pickupTime || null,
+    school,
+    school_start_time: schoolStartTime || null,
+    service_date: serviceDate || null,
+    bid_open_date: openDate,
+    bid_close_date: closeDate,
+    created_by: currentUser.id,
+    status: "open"
+  });
 
   if (error) {
     alert(error.message);
@@ -146,16 +138,18 @@ async function createBid() {
 }
 
 function clearBidForm() {
-  document.getElementById("bidTitle").value = "";
-  document.getElementById("bidDescription").value = "";
-  document.getElementById("studentId").value = "";
-  document.getElementById("streetAddress").value = "";
-  document.getElementById("pickupTime").value = "";
-  document.getElementById("school").value = "";
-  document.getElementById("schoolStartTime").value = "";
-  document.getElementById("serviceDate").value = "";
-  document.getElementById("bidOpenDate").value = "";
-  document.getElementById("bidCloseDate").value = "";
+  [
+    "bidTitle",
+    "bidDescription",
+    "studentId",
+    "streetAddress",
+    "pickupTime",
+    "school",
+    "schoolStartTime",
+    "serviceDate",
+    "bidOpenDate",
+    "bidCloseDate"
+  ].forEach(id => document.getElementById(id).value = "");
 }
 
 async function loadBids() {
@@ -181,6 +175,15 @@ async function loadBids() {
     const lowBid = await getLowBid(bid.id);
     const myBid = await getMyBid(bid.id);
 
+    const lowBidText = lowBid
+      ? "$" + Number(lowBid.amount).toFixed(2) +
+        (
+          currentProfile.role === "admin" && lowBid.profiles
+            ? " - " + escapeHTML(lowBid.profiles.vendor_name || lowBid.profiles.email || "")
+            : ""
+        )
+      : "No bids yet";
+
     const div = document.createElement("div");
     div.className = "bid-card";
 
@@ -201,18 +204,9 @@ async function loadBids() {
       <p><strong>Bid Opens:</strong> ${formatDateTime(bid.bid_open_date)}</p>
       <p><strong>Bid Closes:</strong> ${formatDateTime(bid.bid_close_date)}</p>
 
-      <p><span class="status">${bid.status.toUpperCase()}</span></p>
+      <p><span class="status">${escapeHTML(bid.status.toUpperCase())}</span></p>
 
-     <p class="low-bid">
-  Current Low Bid: ${
-    lowBid 
-      ? "$" + Number(lowBid.amount).toFixed(2) + 
-        (currentProfile.role === "admin" && lowBid.profiles
-          ? " - " + escapeHTML(lowBid.profiles.vendor_name || lowBid.profiles.email || "")
-          : "")
-      : "No bids yet"
-  }
-</p>
+      <p class="low-bid">Current Low Bid: ${lowBidText}</p>
     `;
 
     if (currentProfile.role === "vendor") {
@@ -228,11 +222,11 @@ async function loadBids() {
 }
 
 async function getLowBid(bidId) {
-  const { data } = await supabaseClient
+  const { data, error } = await supabaseClient
     .from("bid_submissions")
     .select(`
       *,
-      profiles (
+      profiles:vendor_id (
         email,
         vendor_name
       )
@@ -242,8 +236,12 @@ async function getLowBid(bidId) {
     .limit(1)
     .maybeSingle();
 
+  if (error) {
+    console.log("Low bid error:", error.message);
+    return null;
+  }
+
   return data;
-}
 }
 
 async function getMyBid(bidId) {
@@ -264,10 +262,7 @@ function vendorBidHTML(bid, myBid) {
   const open = new Date(bid.bid_open_date);
   const close = new Date(bid.bid_close_date);
 
-  const canBid =
-    bid.status === "open" &&
-    now >= open &&
-    now <= close;
+  const canBid = bid.status === "open" && now >= open && now <= close;
 
   if (!canBid) {
     return `
@@ -339,7 +334,7 @@ async function adminBidHTML(bid) {
       amount,
       notes,
       created_at,
-      profiles (
+      profiles:vendor_id (
         email,
         vendor_name
       )
@@ -357,6 +352,7 @@ async function adminBidHTML(bid) {
   `;
 
   if (error) {
+    console.log("Admin bid error:", error.message);
     html += `<p>Error loading vendor bids.</p></div>`;
     return html;
   }
