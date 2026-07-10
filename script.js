@@ -203,11 +203,16 @@ async function loadBids() {
 
       <p><span class="status">${bid.status.toUpperCase()}</span></p>
 
-      <p class="low-bid">
-        Current Low Bid: ${
-          lowBid ? "$" + Number(lowBid.amount).toFixed(2) : "No bids yet"
-        }
-      </p>
+     <p class="low-bid">
+  Current Low Bid: ${
+    lowBid 
+      ? "$" + Number(lowBid.amount).toFixed(2) + 
+        (currentProfile.role === "admin" && lowBid.profiles
+          ? " - " + escapeHTML(lowBid.profiles.vendor_name || lowBid.profiles.email || "")
+          : "")
+      : "No bids yet"
+  }
+</p>
     `;
 
     if (currentProfile.role === "vendor") {
@@ -225,13 +230,20 @@ async function loadBids() {
 async function getLowBid(bidId) {
   const { data } = await supabaseClient
     .from("bid_submissions")
-    .select("*")
+    .select(`
+      *,
+      profiles (
+        email,
+        vendor_name
+      )
+    `)
     .eq("bid_id", bidId)
     .order("amount", { ascending: true })
     .limit(1)
     .maybeSingle();
 
   return data;
+}
 }
 
 async function getMyBid(bidId) {
