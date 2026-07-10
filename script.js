@@ -1,21 +1,19 @@
-from pathlib import Path
-
-script = r'''let currentUser = null;
+let currentUser = null;
 let currentProfile = null;
 let editingBidId = null;
 
 /* =========================================================
-   STARTUP / AUTHENTICATION
+   STARTUP
 ========================================================= */
 
-document.addEventListener("DOMContentLoaded", initializeApp);
-
-async function initializeApp() {
+document.addEventListener("DOMContentLoaded", async () => {
   try {
-    const { data, error } = await supabaseClient.auth.getSession();
+    const { data, error } =
+      await supabaseClient.auth.getSession();
 
     if (error) {
       console.error("Session error:", error);
+      showLoginMessage(error.message);
       showLogin();
       return;
     }
@@ -27,16 +25,9 @@ async function initializeApp() {
 
     currentUser = data.session.user;
 
-    const profileReady = await ensureProfile();
-    if (!profileReady) {
-      await supabaseClient.auth.signOut();
-      showLogin();
-      return;
-    }
+    const profileLoaded = await getCurrentProfile();
 
-    const profileLoaded = await loadProfile();
     if (!profileLoaded) {
-      await supabaseClient.auth.signOut();
       showLogin();
       return;
     }
@@ -44,53 +35,74 @@ async function initializeApp() {
     showApp();
   } catch (error) {
     console.error("Startup error:", error);
+    showLoginMessage(error.message || "Unable to start the application.");
     showLogin();
   }
-}
+});
+
+/* =========================================================
+   LOGIN
+========================================================= */
 
 async function login() {
-  const email = valueOf("email");
-  const password = valueOf("password");
-  const message = document.getElementById("loginMessage");
+  const email = document
+    .getElementById("email")
+    .value
+    .trim();
 
-  message.textContent = "";
+  const password = document
+    .getElementById("password")
+    .value;
+
+  showLoginMessage("");
 
   if (!email || !password) {
-    message.textContent = "Please enter your email and password.";
+    showLoginMessage("Please enter your email and password.");
     return;
   }
 
-  const { data, error } = await supabaseClient.auth.signInWithPassword({
-    email,
-    password
-  });
+  try {
+    const { data, error } =
+      await supabaseClient.auth.signInWithPassword({
+        email,
+        password
+      });
 
-  if (error) {
-    message.textContent = error.message;
-    return;
+    if (error) {
+      console.error("Login error:", error);
+      showLoginMessage(error.message);
+      return;
+    }
+
+    if (!data.user) {
+      showLoginMessage("Login succeeded, but no user account was returned.");
+      return;
+    }
+
+    currentUser = data.user;
+
+    const profileLoaded = await getCurrentProfile();
+
+    if (!profileLoaded) {
+      return;
+    }
+
+    showApp();
+  } catch (error) {
+    console.error("Login exception:", error);
+    showLoginMessage(
+      error.message || "An unexpected login error occurred."
+    );
   }
-
-  currentUser = data.user;
-
-  const profileReady = await ensureProfile();
-  if (!profileReady) {
-    await supabaseClient.auth.signOut();
-    showLogin();
-    return;
-  }
-
-  const profileLoaded = await loadProfile();
-  if (!profileLoaded) {
-    await supabaseClient.auth.signOut();
-    showLogin();
-    return;
-  }
-
-  showApp();
 }
 
+/* =========================================================
+   LOGOUT
+========================================================= */
+
 async function logout() {
-  const { error } = await supabaseClient.auth.signOut();
+  const { error } =
+    await supabaseClient.auth.signOut();
 
   if (error) {
     alert(error.message);
@@ -101,89 +113,93 @@ async function logout() {
   currentProfile = null;
   editingBidId = null;
 
-  setValue("email", "");
-  setValue("password", "");
+  document.getElementById("email").value = "";
+  document.getElementById("password").value = "";
 
-  const loginMessage = document.getElementById("loginMessage");
-  if (loginMessage) loginMessage.textContent = "";
-
+  showLoginMessage("");
   showLogin();
 }
 
+/* =========================================================
+   PAGE DISPLAY
+========================================================= */
+
 function showLogin() {
-  document.getElementById("loginPage")?.classList.remove("hidden");
-  document.getElementById("appPage")?.classList.add("hidden");
+  document
+    .getElementById("loginPage")
+    .classList
+    .remove("hidden");
+
+  document
+    .getElementById("appPage")
+    .classList
+    .add("hidden");
 }
 
 function showApp() {
-  document.getElementById("loginPage")?.classList.add("hidden");
-  document.getElementById("appPage")?.classList.remove("hidden");
+  document
+    .getElementById("loginPage")
+    .classList
+    .add("hidden");
 
-  const welcome = document.getElementById("welcomeMessage");
-  if (welcome) {
-    welcome.textContent =
-      `${currentProfile.vendor_name || currentUser.email} | Role: ${currentProfile.role}`;
-  }
+  document
+    .getElementById("appPage")
+    .classList
+    .remove("hidden");
 
-  document.getElementById("adminPanel")?.classList.toggle(
-    "hidden",
-    currentProfile.role !== "admin"
-  );
+  document.getElementById("welcomeMessage").textContent =
+    `${currentProfile.vendor_name || currentUser.email} | Role: ${currentProfile.role}`;
+
+  document
+    .getElementById("adminPanel")
+    .classList
+    .toggle(
+      "hidden",
+      currentProfile.role !== "admin"
+    );
 
   loadBids();
+}
+
+function showLoginMessage(message) {
+  const element =
+    document.getElementById("loginMessage");
+
+  if (element) {
+    element.textContent = message || "";
+  }
 }
 
 /* =========================================================
    PROFILE
 ========================================================= */
 
-async function ensureProfile() {
-  const { data, error } = await supabaseClient
-    .from("profiles")
-    .select("id")
-    .eq("id", currentUser.id)
-    .maybeSingle();
+async function getCurrentProfile() {
+  const { data, error } =
+    await supabaseClient.rpc(
+      "get_or_create_my_profile"
+    );
 
   if (error) {
-    console.error("Profile lookup error:", error);
-    alert(`Profile error: ${error.message}`);
+    console.error("Profile function error:", error);
+
+    showLoginMessage(
+      `Profile error: ${error.message}`
+    );
+
     return false;
   }
 
   if (!data) {
-    const { error: insertError } = await supabaseClient
-      .from("profiles")
-      .insert({
-        id: currentUser.id,
-        email: currentUser.email,
-        role: "vendor",
-        vendor_name: currentUser.email
-      });
+    showLoginMessage(
+      "Your account logged in, but no profile was returned."
+    );
 
-    if (insertError) {
-      console.error("Profile creation error:", insertError);
-      alert(`Profile creation error: ${insertError.message}`);
-      return false;
-    }
-  }
-
-  return true;
-}
-
-async function loadProfile() {
-  const { data, error } = await supabaseClient
-    .from("profiles")
-    .select("*")
-    .eq("id", currentUser.id)
-    .single();
-
-  if (error) {
-    console.error("Profile loading error:", error);
-    alert(`Profile loading error: ${error.message}`);
     return false;
   }
 
   currentProfile = data;
+
   return true;
 }
 
