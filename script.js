@@ -507,7 +507,9 @@ async function loadBids() {
 
     /* VENDOR LOW BID */
 
-    if (
+ /* VENDOR LOW BID */
+
+if (
   isVendor &&
   !isFinalized
 ) {
