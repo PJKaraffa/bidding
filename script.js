@@ -1,13 +1,15 @@
 let currentUser = null;
 let currentProfile = null;
 let editingBidId = null;
+let allCollapsed = false;
 
 /* =========================================================
    START APPLICATION
 ========================================================= */
 
 document.addEventListener("DOMContentLoaded", async () => {
-  const { data, error } = await supabaseClient.auth.getSession();
+  const { data, error } =
+    await supabaseClient.auth.getSession();
 
   if (error) {
     console.error("Session error:", error.message);
@@ -43,14 +45,21 @@ document.addEventListener("DOMContentLoaded", async () => {
 ========================================================= */
 
 async function login() {
-  const email = document.getElementById("email").value.trim();
-  const password = document.getElementById("password").value;
-  const message = document.getElementById("loginMessage");
+  const email =
+    document.getElementById("email").value.trim();
+
+  const password =
+    document.getElementById("password").value;
+
+  const message =
+    document.getElementById("loginMessage");
 
   message.textContent = "";
 
   if (!email || !password) {
-    message.textContent = "Please enter your email and password.";
+    message.textContent =
+      "Please enter your email and password.";
+
     return;
   }
 
@@ -87,7 +96,8 @@ async function login() {
 ========================================================= */
 
 async function logout() {
-  const { error } = await supabaseClient.auth.signOut();
+  const { error } =
+    await supabaseClient.auth.signOut();
 
   if (error) {
     alert(error.message);
@@ -97,6 +107,7 @@ async function logout() {
   currentUser = null;
   currentProfile = null;
   editingBidId = null;
+  allCollapsed = false;
 
   document.getElementById("email").value = "";
   document.getElementById("password").value = "";
@@ -111,21 +122,41 @@ async function logout() {
 ========================================================= */
 
 function showLogin() {
-  document.getElementById("loginPage").classList.remove("hidden");
-  document.getElementById("appPage").classList.add("hidden");
+  document
+    .getElementById("loginPage")
+    .classList
+    .remove("hidden");
+
+  document
+    .getElementById("appPage")
+    .classList
+    .add("hidden");
 }
 
 function showApp() {
-  document.getElementById("loginPage").classList.add("hidden");
-  document.getElementById("appPage").classList.remove("hidden");
+  document
+    .getElementById("loginPage")
+    .classList
+    .add("hidden");
+
+  document
+    .getElementById("appPage")
+    .classList
+    .remove("hidden");
 
   document.getElementById("welcomeMessage").textContent =
     `${currentUser.email} | Role: ${currentProfile.role}`;
 
   if (currentProfile.role === "admin") {
-    document.getElementById("adminPanel").classList.remove("hidden");
+    document
+      .getElementById("adminPanel")
+      .classList
+      .remove("hidden");
   } else {
-    document.getElementById("adminPanel").classList.add("hidden");
+    document
+      .getElementById("adminPanel")
+      .classList
+      .add("hidden");
   }
 
   loadBids();
@@ -136,30 +167,40 @@ function showApp() {
 ========================================================= */
 
 async function ensureProfile() {
-  const { data, error } = await supabaseClient
-    .from("profiles")
-    .select("*")
-    .eq("id", currentUser.id)
-    .maybeSingle();
+  const { data, error } =
+    await supabaseClient
+      .from("profiles")
+      .select("*")
+      .eq("id", currentUser.id)
+      .maybeSingle();
 
   if (error) {
-    console.error("Profile lookup error:", error.message);
+    console.error(
+      "Profile lookup error:",
+      error.message
+    );
+
     alert(error.message);
     return false;
   }
 
   if (!data) {
-    const { error: insertError } = await supabaseClient
-      .from("profiles")
-      .insert({
-        id: currentUser.id,
-        email: currentUser.email,
-        role: "vendor",
-        vendor_name: currentUser.email
-      });
+    const { error: insertError } =
+      await supabaseClient
+        .from("profiles")
+        .insert({
+          id: currentUser.id,
+          email: currentUser.email,
+          role: "vendor",
+          vendor_name: currentUser.email
+        });
 
     if (insertError) {
-      console.error("Profile creation error:", insertError.message);
+      console.error(
+        "Profile creation error:",
+        insertError.message
+      );
+
       alert(insertError.message);
       return false;
     }
@@ -169,14 +210,19 @@ async function ensureProfile() {
 }
 
 async function loadProfile() {
-  const { data, error } = await supabaseClient
-    .from("profiles")
-    .select("*")
-    .eq("id", currentUser.id)
-    .single();
+  const { data, error } =
+    await supabaseClient
+      .from("profiles")
+      .select("*")
+      .eq("id", currentUser.id)
+      .single();
 
   if (error) {
-    console.error("Profile loading error:", error.message);
+    console.error(
+      "Profile loading error:",
+      error.message
+    );
+
     alert("Profile not found.");
     return false;
   }
@@ -191,20 +237,42 @@ async function loadProfile() {
 
 async function saveBid() {
   if (currentProfile.role !== "admin") {
-    alert("Only administrators can create or edit bids.");
+    alert(
+      "Only administrators can create or edit bids."
+    );
+
     return;
   }
 
-  const title = document.getElementById("bidTitle").value.trim();
-  const description = document.getElementById("bidDescription").value.trim();
-  const studentId = document.getElementById("studentId").value.trim();
-  const streetAddress = document.getElementById("streetAddress").value.trim();
-  const pickupTime = document.getElementById("pickupTime").value;
-  const school = document.getElementById("school").value.trim();
-  const schoolStartTime = document.getElementById("schoolStartTime").value;
-  const serviceDate = document.getElementById("serviceDate").value;
-  const openDateInput = document.getElementById("bidOpenDate").value;
-  const closeDateInput = document.getElementById("bidCloseDate").value;
+  const title =
+    document.getElementById("bidTitle").value.trim();
+
+  const description =
+    document.getElementById("bidDescription").value.trim();
+
+  const studentId =
+    document.getElementById("studentId").value.trim();
+
+  const streetAddress =
+    document.getElementById("streetAddress").value.trim();
+
+  const pickupTime =
+    document.getElementById("pickupTime").value;
+
+  const school =
+    document.getElementById("school").value.trim();
+
+  const schoolStartTime =
+    document.getElementById("schoolStartTime").value;
+
+  const serviceDate =
+    document.getElementById("serviceDate").value;
+
+  const openDateInput =
+    document.getElementById("bidOpenDate").value;
+
+  const closeDateInput =
+    document.getElementById("bidCloseDate").value;
 
   if (
     !title ||
@@ -217,23 +285,35 @@ async function saveBid() {
     !openDateInput ||
     !closeDateInput
   ) {
-    alert("Please complete all required bid fields.");
+    alert(
+      "Please complete all required bid fields."
+    );
+
     return;
   }
 
-  const openDate = new Date(openDateInput);
-  const closeDate = new Date(closeDateInput);
+  const openDate =
+    new Date(openDateInput);
+
+  const closeDate =
+    new Date(closeDateInput);
 
   if (
     Number.isNaN(openDate.getTime()) ||
     Number.isNaN(closeDate.getTime())
   ) {
-    alert("Please enter valid bid opening and closing dates.");
+    alert(
+      "Please enter valid bid opening and closing dates."
+    );
+
     return;
   }
 
   if (closeDate <= openDate) {
-    alert("The bid closing date must be later than the opening date.");
+    alert(
+      "The bid closing date must be later than the opening date."
+    );
+
     return;
   }
 
@@ -248,8 +328,8 @@ async function saveBid() {
     service_date: serviceDate,
 
     /*
-      datetime-local uses the browser's local time.
-      Converting to ISO prevents the 4-hour time shift.
+      The browser supplies datetime-local values in local time.
+      Converting to ISO stores the correct absolute time.
     */
     bid_open_date: openDate.toISOString(),
     bid_close_date: closeDate.toISOString()
@@ -258,22 +338,28 @@ async function saveBid() {
   let result;
 
   if (editingBidId !== null) {
-    result = await supabaseClient
-      .from("transportation_bids")
-      .update(bidData)
-      .eq("id", editingBidId);
+    result =
+      await supabaseClient
+        .from("transportation_bids")
+        .update(bidData)
+        .eq("id", editingBidId);
   } else {
-    result = await supabaseClient
-      .from("transportation_bids")
-      .insert({
-        ...bidData,
-        created_by: currentUser.id,
-        status: "open"
-      });
+    result =
+      await supabaseClient
+        .from("transportation_bids")
+        .insert({
+          ...bidData,
+          created_by: currentUser.id,
+          status: "open"
+        });
   }
 
   if (result.error) {
-    console.error("Save bid error:", result.error.message);
+    console.error(
+      "Save bid error:",
+      result.error.message
+    );
+
     alert(result.error.message);
     return;
   }
@@ -294,18 +380,26 @@ async function saveBid() {
 
 async function editBid(bidId) {
   if (currentProfile.role !== "admin") {
-    alert("Only administrators can edit bids.");
+    alert(
+      "Only administrators can edit bids."
+    );
+
     return;
   }
 
-  const { data: bid, error } = await supabaseClient
-    .from("transportation_bids")
-    .select("*")
-    .eq("id", bidId)
-    .single();
+  const { data: bid, error } =
+    await supabaseClient
+      .from("transportation_bids")
+      .select("*")
+      .eq("id", bidId)
+      .single();
 
   if (error) {
-    console.error("Edit bid error:", error.message);
+    console.error(
+      "Edit bid error:",
+      error.message
+    );
+
     alert(error.message);
     return;
   }
@@ -325,22 +419,30 @@ async function editBid(bidId) {
     bid.street_address || "";
 
   document.getElementById("pickupTime").value =
-    normalizeTimeForInput(bid.pickup_time);
+    normalizeTimeForInput(
+      bid.pickup_time
+    );
 
   document.getElementById("school").value =
     bid.school || "";
 
   document.getElementById("schoolStartTime").value =
-    normalizeTimeForInput(bid.school_start_time);
+    normalizeTimeForInput(
+      bid.school_start_time
+    );
 
   document.getElementById("serviceDate").value =
     bid.service_date || "";
 
   document.getElementById("bidOpenDate").value =
-    databaseDateToInput(bid.bid_open_date);
+    databaseDateToInput(
+      bid.bid_open_date
+    );
 
   document.getElementById("bidCloseDate").value =
-    databaseDateToInput(bid.bid_close_date);
+    databaseDateToInput(
+      bid.bid_close_date
+    );
 
   document.getElementById("bidFormHeading").textContent =
     "Edit Transportation Bid";
@@ -350,11 +452,13 @@ async function editBid(bidId) {
 
   document
     .getElementById("cancelEditButton")
-    .classList.remove("hidden");
+    .classList
+    .remove("hidden");
 
   document
     .getElementById("editMessage")
-    .classList.remove("hidden");
+    .classList
+    .remove("hidden");
 
   document
     .getElementById("adminPanel")
@@ -373,17 +477,26 @@ function cancelBidEdit() {
 
   clearBidForm();
 
-  const heading = document.getElementById("bidFormHeading");
-  const saveButton = document.getElementById("saveBidButton");
-  const cancelButton = document.getElementById("cancelEditButton");
-  const editMessage = document.getElementById("editMessage");
+  const heading =
+    document.getElementById("bidFormHeading");
+
+  const saveButton =
+    document.getElementById("saveBidButton");
+
+  const cancelButton =
+    document.getElementById("cancelEditButton");
+
+  const editMessage =
+    document.getElementById("editMessage");
 
   if (heading) {
-    heading.textContent = "Create Transportation Bid";
+    heading.textContent =
+      "Create Transportation Bid";
   }
 
   if (saveButton) {
-    saveButton.textContent = "Post Bid";
+    saveButton.textContent =
+      "Post Bid";
   }
 
   if (cancelButton) {
@@ -417,20 +530,39 @@ function clearBidForm() {
 ========================================================= */
 
 async function loadBids() {
-  const container = document.getElementById("bidsList");
+  /*
+    Reset the Collapse All button whenever the bid list reloads.
+  */
+
+  allCollapsed = false;
+
+  const toggleAllButton =
+    document.getElementById("toggleAllButton");
+
+  if (toggleAllButton) {
+    toggleAllButton.textContent =
+      "Collapse All";
+  }
+
+  const container =
+    document.getElementById("bidsList");
 
   container.innerHTML =
     "<p>Loading transportation bids...</p>";
 
-  const { data: bids, error } = await supabaseClient
-    .from("transportation_bids")
-    .select("*")
-    .order("created_at", {
-      ascending: false
-    });
+  const { data: bids, error } =
+    await supabaseClient
+      .from("transportation_bids")
+      .select("*")
+      .order("created_at", {
+        ascending: false
+      });
 
   if (error) {
-    console.error("Load bids error:", error.message);
+    console.error(
+      "Load bids error:",
+      error.message
+    );
 
     container.innerHTML = `
       <p class="error-message">
@@ -478,7 +610,9 @@ async function loadBids() {
     let summaryHTML = "";
     let lowBidHTML = "";
 
-    /* ADMIN LOW BID */
+    /* -----------------------------------------------------
+       ADMIN LOW BID
+    ----------------------------------------------------- */
 
     if (isAdmin) {
       if (lowBid) {
@@ -490,7 +624,9 @@ async function loadBids() {
         lowBidHTML = `
           <p class="low-bid">
             Current Low Bid:
-            $${Number(lowBid.amount).toFixed(2)}
+            $${Number(
+              lowBid.amount
+            ).toFixed(2)}
             -
             ${escapeHTML(vendorName)}
           </p>
@@ -505,32 +641,36 @@ async function loadBids() {
       }
     }
 
-    /* VENDOR LOW BID */
+    /* -----------------------------------------------------
+       VENDOR LOW BID
+    ----------------------------------------------------- */
 
- /* VENDOR LOW BID */
+    if (
+      isVendor &&
+      !isFinalized
+    ) {
+      if (lowBid) {
+        lowBidHTML = `
+          <p class="low-bid">
+            Current Low Bid:
+            $${Number(
+              lowBid.amount
+            ).toFixed(2)}
+          </p>
+        `;
+      } else {
+        lowBidHTML = `
+          <p class="low-bid">
+            Current Low Bid:
+            No bids yet
+          </p>
+        `;
+      }
+    }
 
-if (
-  isVendor &&
-  !isFinalized
-) {
-  if (lowBid) {
-    lowBidHTML = `
-      <p class="low-bid">
-        Current Low Bid:
-        $${Number(lowBid.amount).toFixed(2)}
-      </p>
-    `;
-  } else {
-    lowBidHTML = `
-      <p class="low-bid">
-        Current Low Bid:
-        No bids yet
-      </p>
-    `;
-  }
-}
-
-    /* VENDOR FINAL RESULT */
+    /* -----------------------------------------------------
+       VENDOR FINAL RESULT
+    ----------------------------------------------------- */
 
     if (
       isVendor &&
@@ -563,7 +703,9 @@ if (
       }
     }
 
-    /* ADMIN FINAL RESULT */
+    /* -----------------------------------------------------
+       ADMIN FINAL RESULT
+    ----------------------------------------------------- */
 
     if (
       isAdmin &&
@@ -586,7 +728,9 @@ if (
 
             |
 
-            $${Number(winningBid.amount).toFixed(2)}
+            $${Number(
+              winningBid.amount
+            ).toFixed(2)}
 
           </div>
         `;
@@ -602,7 +746,8 @@ if (
     const card =
       document.createElement("div");
 
-    card.className = "bid-card";
+    card.className =
+      "bid-card";
 
     card.innerHTML = `
       <div
@@ -743,10 +888,17 @@ if (
 
     container.appendChild(card);
   }
+
+  /*
+    The finalized bids begin collapsed, so update the button
+    according to whether every card is currently collapsed.
+  */
+
+  updateToggleAllButton();
 }
 
 /* =========================================================
-   COLLAPSE / EXPAND
+   COLLAPSE OR EXPAND ONE BID
 ========================================================= */
 
 function toggleBid(bidId) {
@@ -794,6 +946,109 @@ function toggleBid(bidId) {
       arrow.textContent = "▶";
     }
   }
+
+  updateToggleAllButton();
+}
+
+/* =========================================================
+   COLLAPSE OR EXPAND ALL BIDS
+========================================================= */
+
+function toggleAllBids() {
+  const details =
+    document.querySelectorAll(
+      ".bid-details"
+    );
+
+  const arrows =
+    document.querySelectorAll(
+      ".bid-arrow"
+    );
+
+  if (details.length === 0) {
+    return;
+  }
+
+  if (!allCollapsed) {
+    /*
+      Collapse every bid.
+    */
+
+    details.forEach(detail => {
+      detail.classList.remove(
+        "expanded"
+      );
+
+      detail.classList.add(
+        "collapsed"
+      );
+    });
+
+    arrows.forEach(arrow => {
+      arrow.textContent = "▶";
+    });
+
+    allCollapsed = true;
+  } else {
+    /*
+      Expand every bid.
+    */
+
+    details.forEach(detail => {
+      detail.classList.remove(
+        "collapsed"
+      );
+
+      detail.classList.add(
+        "expanded"
+      );
+    });
+
+    arrows.forEach(arrow => {
+      arrow.textContent = "▼";
+    });
+
+    allCollapsed = false;
+  }
+
+  updateToggleAllButton();
+}
+
+/* =========================================================
+   UPDATE COLLAPSE ALL BUTTON
+========================================================= */
+
+function updateToggleAllButton() {
+  const allDetails =
+    document.querySelectorAll(
+      ".bid-details"
+    );
+
+  const expandedDetails =
+    document.querySelectorAll(
+      ".bid-details.expanded"
+    );
+
+  /*
+    Consider everything collapsed only when no cards
+    are currently expanded.
+  */
+
+  allCollapsed =
+    allDetails.length > 0 &&
+    expandedDetails.length === 0;
+
+  const button =
+    document.getElementById(
+      "toggleAllButton"
+    );
+
+  if (button) {
+    button.textContent =
+      allCollapsed
+        ? "Expand All"
+        : "Collapse All";
+  }
 }
 
 /* =========================================================
@@ -802,33 +1057,37 @@ function toggleBid(bidId) {
 
 async function getLowBid(bidId) {
   /*
-    Administrators can read the full submission directly,
+    Administrators can read the full lowest submission,
     including the vendor name.
   */
-  if (currentProfile.role === "admin") {
-    const { data, error } = await supabaseClient
-      .from("bid_submissions")
-      .select(`
-        id,
-        bid_id,
-        vendor_id,
-        amount,
-        notes,
-        created_at,
-        profiles:vendor_id (
-          email,
-          vendor_name
-        )
-      `)
-      .eq("bid_id", bidId)
-      .order("amount", {
-        ascending: true
-      })
-      .order("created_at", {
-        ascending: true
-      })
-      .limit(1)
-      .maybeSingle();
+
+  if (
+    currentProfile.role === "admin"
+  ) {
+    const { data, error } =
+      await supabaseClient
+        .from("bid_submissions")
+        .select(`
+          id,
+          bid_id,
+          vendor_id,
+          amount,
+          notes,
+          created_at,
+          profiles:vendor_id (
+            email,
+            vendor_name
+          )
+        `)
+        .eq("bid_id", bidId)
+        .order("amount", {
+          ascending: true
+        })
+        .order("created_at", {
+          ascending: true
+        })
+        .limit(1)
+        .maybeSingle();
 
     if (error) {
       console.error(
@@ -843,13 +1102,15 @@ async function getLowBid(bidId) {
   }
 
   /*
-    Vendors receive only the lowest amount.
-    No vendor ID, email, or company name is returned.
+    Vendors receive only the lowest amount through
+    the secure get_low_bid database function.
   */
-  const { data, error } = await supabaseClient
-    .rpc("get_low_bid", {
-      p_bid_id: bidId
-    });
+
+  const { data, error } =
+    await supabaseClient
+      .rpc("get_low_bid", {
+        p_bid_id: bidId
+      });
 
   if (error) {
     console.error(
@@ -862,6 +1123,7 @@ async function getLowBid(bidId) {
 
   return data?.[0] || null;
 }
+
 /* =========================================================
    WINNING BID
 ========================================================= */
@@ -873,22 +1135,23 @@ async function getWinningBid(
     return null;
   }
 
-  const { data, error } = await supabaseClient
-    .from("bid_submissions")
-    .select(`
-      id,
-      bid_id,
-      vendor_id,
-      amount,
-      notes,
-      created_at,
-      profiles:vendor_id (
-        email,
-        vendor_name
-      )
-    `)
-    .eq("id", awardedBidId)
-    .maybeSingle();
+  const { data, error } =
+    await supabaseClient
+      .from("bid_submissions")
+      .select(`
+        id,
+        bid_id,
+        vendor_id,
+        amount,
+        notes,
+        created_at,
+        profiles:vendor_id (
+          email,
+          vendor_name
+        )
+      `)
+      .eq("id", awardedBidId)
+      .maybeSingle();
 
   if (error) {
     console.error(
@@ -913,22 +1176,23 @@ async function getMyBid(bidId) {
     return null;
   }
 
-  const { data, error } = await supabaseClient
-    .from("bid_submissions")
-    .select(`
-      id,
-      bid_id,
-      vendor_id,
-      amount,
-      notes,
-      created_at
-    `)
-    .eq("bid_id", bidId)
-    .eq(
-      "vendor_id",
-      currentUser.id
-    )
-    .maybeSingle();
+  const { data, error } =
+    await supabaseClient
+      .from("bid_submissions")
+      .select(`
+        id,
+        bid_id,
+        vendor_id,
+        amount,
+        notes,
+        created_at
+      `)
+      .eq("bid_id", bidId)
+      .eq(
+        "vendor_id",
+        currentUser.id
+      )
+      .maybeSingle();
 
   if (error) {
     console.error(
@@ -950,7 +1214,8 @@ function vendorBidHTML(
   bid,
   myBid
 ) {
-  const now = new Date();
+  const now =
+    new Date();
 
   const openDate =
     new Date(
@@ -1132,7 +1397,9 @@ async function submitBid(bidId) {
     return;
   }
 
-  alert("Your bid was saved.");
+  alert(
+    "Your bid was saved."
+  );
 
   await loadBids();
 }
@@ -1142,7 +1409,10 @@ async function submitBid(bidId) {
 ========================================================= */
 
 async function adminBidHTML(bid) {
-  const { data: submissions, error } = await supabaseClient
+  const {
+    data: submissions,
+    error
+  } = await supabaseClient
     .from("bid_submissions")
     .select(`
       id,
@@ -1483,12 +1753,17 @@ async function finalizeBid(bidId) {
     error: readError
   } = await supabaseClient
     .from("transportation_bids")
-    .select("awarded_bid_id")
+    .select(
+      "awarded_bid_id"
+    )
     .eq("id", bidId)
     .single();
 
   if (readError) {
-    alert(readError.message);
+    alert(
+      readError.message
+    );
+
     return;
   }
 
@@ -1587,9 +1862,14 @@ function databaseDateToInput(value) {
     return "";
   }
 
-  const date = new Date(value);
+  const date =
+    new Date(value);
 
-  if (Number.isNaN(date.getTime())) {
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
     return "";
   }
 
@@ -1646,7 +1926,11 @@ function formatDateTime(value) {
   const date =
     new Date(value);
 
-  if (Number.isNaN(date.getTime())) {
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
     return "";
   }
 
