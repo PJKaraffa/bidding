@@ -1,313 +1,99 @@
-from pathlib import Path
-
-html = r'''<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Transportation Bidding System</title>
-  <link rel="stylesheet" href="./style.css?v=30">
-</head>
-
-<body>
-
-  <!-- LOGIN PAGE -->
-  <section id="loginPage" class="login-card">
-    <h1>Transportation Bidding</h1>
-    <h2>Staff / Vendor Login</h2>
-
-    <form id="loginForm">
-      <input
-        id="email"
-        type="email"
-        autocomplete="username"
-        placeholder="Email"
-        required
-      >
-
-      <input
-        id="password"
-        type="password"
-        autocomplete="current-password"
-        placeholder="Password"
-        required
-      >
-
-      <button id="loginButton" type="submit">Login</button>
-    </form>
-
-    <p id="loginMessage"></p>
-  </section>
-
-  <!-- APPLICATION -->
-  <div id="appPage" class="hidden">
-
-    <header>
-      <div>
-        <h1>Transportation Bidding System</h1>
-        <p id="welcomeMessage"></p>
-      </div>
-
-      <button id="logoutButton" type="button">Logout</button>
-    </header>
-
-    <main>
-
-      <!-- ADMIN CREATE / EDIT FORM -->
-      <section id="adminPanel" class="card hidden">
-
-        <h2 id="bidFormHeading">Create Transportation Bid</h2>
-
-        <p id="editMessage" class="edit-message hidden">
-          You are editing an existing transportation bid.
-        </p>
-
-        <form id="bidForm">
-
-          <input
-            id="bidTitle"
-            type="text"
-            placeholder="Bid Title"
-            required
-          >
-
-          <textarea
-            id="bidDescription"
-            placeholder="Bid Description / Notes"
-          ></textarea>
-
-          <div class="grid">
-            <input
-              id="studentId"
-              type="text"
-              placeholder="Student ID"
-              required
-            >
-
-            <input
-              id="streetAddress"
-              type="text"
-              placeholder="Street Address"
-              required
-            >
-          </div>
-
-          <div class="grid">
-            <div>
-              <label for="pickupTime">Pickup Time</label>
-              <input
-                id="pickupTime"
-                type="time"
-                required
-              >
-            </div>
-
-            <div>
-              <label for="schoolStartTime">School Start Time</label>
-              <input
-                id="schoolStartTime"
-                type="time"
-                required
-              >
-            </div>
-          </div>
-
-          <input
-            id="school"
-            type="text"
-            placeholder="School"
-            required
-          >
-
-          <div class="grid">
-            <div>
-              <label for="serviceDate">Service Date</label>
-              <input
-                id="serviceDate"
-                type="date"
-                required
-              >
-            </div>
-
-            <div>
-              <label for="bidOpenDate">Bid Opens</label>
-              <input
-                id="bidOpenDate"
-                type="datetime-local"
-                required
-              >
-            </div>
-
-            <div>
-              <label for="bidCloseDate">Bid Closes</label>
-              <input
-                id="bidCloseDate"
-                type="datetime-local"
-                required
-              >
-            </div>
-          </div>
-
-          <div class="form-actions">
-            <button id="saveBidButton" type="submit">Post Bid</button>
-
-            <button
-              id="cancelEditButton"
-              class="gray hidden"
-              type="button"
-            >
-              Cancel Edit
-            </button>
-          </div>
-
-        </form>
-      </section>
-
-      <!-- BIDS -->
-      <section class="card">
-        <h2>Transportation Bids</h2>
-        <div id="bidsList"></div>
-      </section>
-
-    </main>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./supabase-config.js?v=30"></script>
-  <script src="./script.js?v=30"></script>
-</body>
-</html>
-'''
-
-js = r'''let currentUser = null;
+let currentUser = null;
 let currentProfile = null;
-let editingBidId = null;
 
 /* =========================================================
-   STARTUP
+   START APPLICATION
 ========================================================= */
 
-document.addEventListener("DOMContentLoaded", initializeApp);
+document.addEventListener("DOMContentLoaded", async () => {
+  const { data, error } =
+    await supabaseClient.auth.getSession();
 
-async function initializeApp() {
-  bindStaticEvents();
-
-  try {
-    const { data, error } = await supabaseClient.auth.getSession();
-
-    if (error) {
-      console.error("Session error:", error);
-      showLoginMessage(error.message);
-      showLogin();
-      return;
-    }
-
-    if (!data.session) {
-      showLogin();
-      return;
-    }
-
-    currentUser = data.session.user;
-
-    const profileLoaded = await loadCurrentProfile();
-
-    if (!profileLoaded) {
-      showLogin();
-      return;
-    }
-
-    showApp();
-  } catch (error) {
-    console.error("Startup error:", error);
-    showLoginMessage(error.message || "Unable to start the application.");
+  if (error) {
+    console.error("Session error:", error.message);
     showLogin();
-  }
-}
-
-function bindStaticEvents() {
-  document
-    .getElementById("loginForm")
-    ?.addEventListener("submit", handleLoginSubmit);
-
-  document
-    .getElementById("logoutButton")
-    ?.addEventListener("click", logout);
-
-  document
-    .getElementById("bidForm")
-    ?.addEventListener("submit", handleBidFormSubmit);
-
-  document
-    .getElementById("cancelEditButton")
-    ?.addEventListener("click", cancelBidEdit);
-
-  document
-    .getElementById("bidsList")
-    ?.addEventListener("click", handleBidListClick);
-}
-
-/* =========================================================
-   LOGIN / LOGOUT
-========================================================= */
-
-async function handleLoginSubmit(event) {
-  event.preventDefault();
-  await login();
-}
-
-async function login() {
-  const email = valueOf("email");
-  const password = document.getElementById("password")?.value || "";
-
-  showLoginMessage("");
-
-  if (!email || !password) {
-    showLoginMessage("Please enter your email and password.");
     return;
   }
 
-  const loginButton = document.getElementById("loginButton");
-  setButtonBusy(loginButton, true, "Logging in...");
+  if (data.session) {
+    currentUser = data.session.user;
 
-  try {
-    const { data, error } =
-      await supabaseClient.auth.signInWithPassword({
-        email,
-        password
-      });
+    await ensureProfile();
 
-    if (error) {
-      console.error("Login error:", error);
-      showLoginMessage(error.message);
-      return;
-    }
-
-    if (!data.user || !data.session) {
-      showLoginMessage("Login did not return a valid user session.");
-      return;
-    }
-
-    currentUser = data.user;
-
-    const profileLoaded = await loadCurrentProfile();
+    const profileLoaded =
+      await loadProfile();
 
     if (!profileLoaded) {
-      await supabaseClient.auth.signOut();
+      showLogin();
       return;
     }
 
-    showLoginMessage("");
     showApp();
-  } catch (error) {
-    console.error("Login exception:", error);
-    showLoginMessage(error.message || "Unexpected login error.");
-  } finally {
-    setButtonBusy(loginButton, false, "Login");
+  } else {
+    showLogin();
   }
+});
+
+/* =========================================================
+   LOGIN
+========================================================= */
+
+async function login() {
+  const email =
+    document
+      .getElementById("email")
+      .value
+      .trim();
+
+  const password =
+    document
+      .getElementById("password")
+      .value;
+
+  const message =
+    document.getElementById("loginMessage");
+
+  message.textContent = "";
+
+  if (!email || !password) {
+    message.textContent =
+      "Please enter your email and password.";
+
+    return;
+  }
+
+  const { data, error } =
+    await supabaseClient.auth.signInWithPassword({
+      email,
+      password
+    });
+
+  if (error) {
+    message.textContent = error.message;
+    return;
+  }
+
+  currentUser = data.user;
+
+  await ensureProfile();
+
+  const profileLoaded =
+    await loadProfile();
+
+  if (!profileLoaded) {
+    return;
+  }
+
+  showApp();
 }
 
+/* =========================================================
+   LOGOUT
+========================================================= */
+
 async function logout() {
-  const { error } = await supabaseClient.auth.signOut();
+  const { error } =
+    await supabaseClient.auth.signOut();
 
   if (error) {
     alert(error.message);
@@ -316,12 +102,11 @@ async function logout() {
 
   currentUser = null;
   currentProfile = null;
-  editingBidId = null;
 
-  setValue("email", "");
-  setValue("password", "");
-  showLoginMessage("");
-  cancelBidEdit();
+  document.getElementById("email").value = "";
+  document.getElementById("password").value = "";
+  document.getElementById("loginMessage").textContent = "";
+
   showLogin();
 }
 
@@ -330,111 +115,182 @@ async function logout() {
 ========================================================= */
 
 function showLogin() {
-  document.getElementById("loginPage")?.classList.remove("hidden");
-  document.getElementById("appPage")?.classList.add("hidden");
+  document
+    .getElementById("loginPage")
+    .classList
+    .remove("hidden");
+
+  document
+    .getElementById("appPage")
+    .classList
+    .add("hidden");
 }
 
 function showApp() {
-  document.getElementById("loginPage")?.classList.add("hidden");
-  document.getElementById("appPage")?.classList.remove("hidden");
+  document
+    .getElementById("loginPage")
+    .classList
+    .add("hidden");
 
-  const welcome = document.getElementById("welcomeMessage");
+  document
+    .getElementById("appPage")
+    .classList
+    .remove("hidden");
 
-  if (welcome) {
-    welcome.textContent =
-      `${currentProfile.vendor_name || currentUser.email} | Role: ${currentProfile.role}`;
+  document.getElementById("welcomeMessage").textContent =
+    `${currentUser.email} | Role: ${currentProfile.role}`;
+
+  if (currentProfile.role === "admin") {
+    document
+      .getElementById("adminPanel")
+      .classList
+      .remove("hidden");
+  } else {
+    document
+      .getElementById("adminPanel")
+      .classList
+      .add("hidden");
   }
-
-  document.getElementById("adminPanel")?.classList.toggle(
-    "hidden",
-    currentProfile.role !== "admin"
-  );
 
   loadBids();
-}
-
-function showLoginMessage(message) {
-  const element = document.getElementById("loginMessage");
-
-  if (element) {
-    element.textContent = message || "";
-  }
 }
 
 /* =========================================================
    PROFILE
 ========================================================= */
 
-async function loadCurrentProfile() {
-  /*
-    This version reads the profile directly.
-    It does not require a custom profile RPC.
-  */
-
-  const { data, error } = await supabaseClient
-    .from("profiles")
-    .select("*")
-    .eq("id", currentUser.id)
-    .maybeSingle();
-
-  if (error) {
-    console.error("Profile loading error:", error);
-    showLoginMessage(`Profile error: ${error.message}`);
-    return false;
-  }
-
-  if (data) {
-    currentProfile = data;
-    return true;
-  }
-
-  const { data: createdProfile, error: createError } =
+async function ensureProfile() {
+  const { data, error } =
     await supabaseClient
       .from("profiles")
-      .insert({
-        id: currentUser.id,
-        email: currentUser.email,
-        role: "vendor",
-        vendor_name: currentUser.email
-      })
-      .select()
-      .single();
+      .select("*")
+      .eq("id", currentUser.id)
+      .maybeSingle();
 
-  if (createError) {
-    console.error("Profile creation error:", createError);
-    showLoginMessage(`Profile creation error: ${createError.message}`);
+  if (error) {
+    console.error(
+      "Profile lookup error:",
+      error.message
+    );
+
     return false;
   }
 
-  currentProfile = createdProfile;
+  if (!data) {
+    const { error: insertError } =
+      await supabaseClient
+        .from("profiles")
+        .insert({
+          id: currentUser.id,
+          email: currentUser.email,
+          role: "vendor",
+          vendor_name: currentUser.email
+        });
+
+    if (insertError) {
+      console.error(
+        "Profile creation error:",
+        insertError.message
+      );
+
+      alert(insertError.message);
+      return false;
+    }
+  }
+
+  return true;
+}
+
+async function loadProfile() {
+  const { data, error } =
+    await supabaseClient
+      .from("profiles")
+      .select("*")
+      .eq("id", currentUser.id)
+      .single();
+
+  if (error) {
+    console.error(
+      "Profile loading error:",
+      error.message
+    );
+
+    alert("Profile not found.");
+    return false;
+  }
+
+  currentProfile = data;
+
   return true;
 }
 
 /* =========================================================
-   CREATE / UPDATE BID
+   CREATE BID
 ========================================================= */
 
-async function handleBidFormSubmit(event) {
-  event.preventDefault();
-  await saveBid();
-}
-
-async function saveBid() {
+async function createBid() {
   if (currentProfile.role !== "admin") {
-    alert("Only administrators can create or edit bids.");
+    alert(
+      "Only administrators can create bids."
+    );
+
     return;
   }
 
-  const title = valueOf("bidTitle");
-  const description = valueOf("bidDescription");
-  const studentId = valueOf("studentId");
-  const streetAddress = valueOf("streetAddress");
-  const pickupTime = valueOf("pickupTime");
-  const school = valueOf("school");
-  const schoolStartTime = valueOf("schoolStartTime");
-  const serviceDate = valueOf("serviceDate");
-  const openLocal = valueOf("bidOpenDate");
-  const closeLocal = valueOf("bidCloseDate");
+  const title =
+    document
+      .getElementById("bidTitle")
+      .value
+      .trim();
+
+  const description =
+    document
+      .getElementById("bidDescription")
+      .value
+      .trim();
+
+  const studentId =
+    document
+      .getElementById("studentId")
+      .value
+      .trim();
+
+  const streetAddress =
+    document
+      .getElementById("streetAddress")
+      .value
+      .trim();
+
+  const pickupTime =
+    document
+      .getElementById("pickupTime")
+      .value;
+
+  const school =
+    document
+      .getElementById("school")
+      .value
+      .trim();
+
+  const schoolStartTime =
+    document
+      .getElementById("schoolStartTime")
+      .value;
+
+  const serviceDate =
+    document
+      .getElementById("serviceDate")
+      .value;
+
+  const openDate =
+    document
+      .getElementById("bidOpenDate")
+      .value;
+
+  const closeDate =
+    document
+      .getElementById("bidCloseDate")
+      .value;
 
   if (
     !title ||
@@ -444,156 +300,70 @@ async function saveBid() {
     !school ||
     !schoolStartTime ||
     !serviceDate ||
-    !openLocal ||
-    !closeLocal
+    !openDate ||
+    !closeDate
   ) {
-    alert("Please complete all required bid fields.");
+    alert(
+      "Please complete all required bid fields."
+    );
+
     return;
   }
 
-  const openDate = localInputToDate(openLocal);
-  const closeDate = localInputToDate(closeLocal);
+  if (
+    new Date(closeDate) <=
+    new Date(openDate)
+  ) {
+    alert(
+      "The bid closing date must be later than the opening date."
+    );
 
-  if (!openDate || !closeDate) {
-    alert("Please enter valid bid opening and closing dates.");
     return;
   }
 
-  if (closeDate <= openDate) {
-    alert("The bid closing date must be later than the opening date.");
-    return;
-  }
-
-  const bidData = {
-    title,
-    description,
-    student_id: studentId,
-    street_address: streetAddress,
-    pickup_time: pickupTime,
-    school,
-    school_start_time: schoolStartTime,
-    service_date: serviceDate,
-
-    /*
-      datetime-local is entered in the browser's local time.
-      Converting to ISO stores the correct absolute time in Supabase.
-    */
-    bid_open_date: openDate.toISOString(),
-    bid_close_date: closeDate.toISOString()
-  };
-
-  const saveButton = document.getElementById("saveBidButton");
-
-  setButtonBusy(
-    saveButton,
-    true,
-    editingBidId === null ? "Posting..." : "Updating..."
-  );
-
-  try {
-    let result;
-
-    if (editingBidId !== null) {
-      result = await supabaseClient
-        .from("transportation_bids")
-        .update(bidData)
-        .eq("id", editingBidId);
-    } else {
-      result = await supabaseClient
-        .from("transportation_bids")
-        .insert({
-          ...bidData,
-          created_by: currentUser.id,
-          status: "open"
-        });
-    }
-
-    if (result.error) {
-      console.error("Save bid error:", result.error);
-      alert(result.error.message);
-      return;
-    }
-
-    alert(editingBidId === null ? "Bid posted." : "Bid updated.");
-    cancelBidEdit();
-    await loadBids();
-  } finally {
-    setButtonBusy(saveButton, false, editingBidId === null ? "Post Bid" : "Update Bid");
-  }
-}
-
-async function editBid(bidId) {
-  if (currentProfile.role !== "admin") {
-    alert("Only administrators can edit bids.");
-    return;
-  }
-
-  const { data: bid, error } = await supabaseClient
-    .from("transportation_bids")
-    .select("*")
-    .eq("id", bidId)
-    .single();
+  const { error } =
+    await supabaseClient
+      .from("transportation_bids")
+      .insert({
+        title,
+        description,
+        student_id: studentId,
+        street_address: streetAddress,
+        pickup_time: pickupTime,
+        school,
+        school_start_time: schoolStartTime,
+        service_date: serviceDate,
+        bid_open_date: openDate,
+        bid_close_date: closeDate,
+        created_by: currentUser.id,
+        status: "open"
+      });
 
   if (error) {
+    console.error(
+      "Create bid error:",
+      error.message
+    );
+
     alert(error.message);
     return;
   }
 
-  editingBidId = bid.id;
-
-  setValue("bidTitle", bid.title);
-  setValue("bidDescription", bid.description);
-  setValue("studentId", bid.student_id);
-  setValue("streetAddress", bid.street_address);
-  setValue("pickupTime", normalizeTimeForInput(bid.pickup_time));
-  setValue("school", bid.school);
-  setValue("schoolStartTime", normalizeTimeForInput(bid.school_start_time));
-  setValue("serviceDate", bid.service_date);
-  setValue("bidOpenDate", isoToLocalInput(bid.bid_open_date));
-  setValue("bidCloseDate", isoToLocalInput(bid.bid_close_date));
-
-  const heading = document.getElementById("bidFormHeading");
-  const saveButton = document.getElementById("saveBidButton");
-
-  if (heading) heading.textContent = "Edit Transportation Bid";
-  if (saveButton) saveButton.textContent = "Update Bid";
-
-  document.getElementById("cancelEditButton")?.classList.remove("hidden");
-  document.getElementById("editMessage")?.classList.remove("hidden");
-
-  document.getElementById("adminPanel")?.scrollIntoView({
-    behavior: "smooth",
-    block: "start"
-  });
-}
-
-function cancelBidEdit() {
-  editingBidId = null;
   clearBidForm();
-
-  const heading = document.getElementById("bidFormHeading");
-  const saveButton = document.getElementById("saveBidButton");
-
-  if (heading) heading.textContent = "Create Transportation Bid";
-  if (saveButton) saveButton.textContent = "Post Bid";
-
-  document.getElementById("cancelEditButton")?.classList.add("hidden");
-  document.getElementById("editMessage")?.classList.add("hidden");
+  await loadBids();
 }
 
 function clearBidForm() {
-  [
-    "bidTitle",
-    "bidDescription",
-    "studentId",
-    "streetAddress",
-    "pickupTime",
-    "school",
-    "schoolStartTime",
-    "serviceDate",
-    "bidOpenDate",
-    "bidCloseDate"
-  ].forEach(id => setValue(id, ""));
+  document.getElementById("bidTitle").value = "";
+  document.getElementById("bidDescription").value = "";
+  document.getElementById("studentId").value = "";
+  document.getElementById("streetAddress").value = "";
+  document.getElementById("pickupTime").value = "";
+  document.getElementById("school").value = "";
+  document.getElementById("schoolStartTime").value = "";
+  document.getElementById("serviceDate").value = "";
+  document.getElementById("bidOpenDate").value = "";
+  document.getElementById("bidCloseDate").value = "";
 }
 
 /* =========================================================
@@ -601,137 +371,344 @@ function clearBidForm() {
 ========================================================= */
 
 async function loadBids() {
-  const container = document.getElementById("bidsList");
+  const container =
+    document.getElementById("bidsList");
 
-  if (!container) return;
+  container.innerHTML =
+    "<p>Loading transportation bids...</p>";
 
-  container.innerHTML = "<p>Loading transportation bids...</p>";
-
-  const { data: bids, error } = await supabaseClient
-    .from("transportation_bids")
-    .select("*")
-    .order("created_at", { ascending: false });
+  const { data: bids, error } =
+    await supabaseClient
+      .from("transportation_bids")
+      .select("*")
+      .order("created_at", {
+        ascending: false
+      });
 
   if (error) {
-    console.error("Load bids error:", error);
-    container.innerHTML =
-      `<p class="error-message">${escapeHTML(error.message)}</p>`;
+    console.error(
+      "Load bids error:",
+      error.message
+    );
+
+    container.innerHTML = `
+      <p class="error-message">
+        ${escapeHTML(error.message)}
+      </p>
+    `;
+
     return;
   }
 
   container.innerHTML = "";
 
-  if (!bids?.length) {
-    container.innerHTML = "<p>No transportation bids posted yet.</p>";
+  if (!bids || bids.length === 0) {
+    container.innerHTML =
+      "<p>No transportation bids posted yet.</p>";
+
     return;
   }
 
-  const isAdmin = currentProfile.role === "admin";
+  const isAdmin =
+    currentProfile.role === "admin";
+
+  const isVendor =
+    currentProfile.role === "vendor";
 
   for (const bid of bids) {
-    const myBid = isAdmin ? null : await getMyBid(bid.id);
+    const lowBid =
+      await getLowBid(bid.id);
 
-    const submissionsResult = isAdmin
-      ? await getAdminSubmissions(bid.id)
-      : { error: null, rows: [] };
+    const myBid =
+      isVendor
+        ? await getMyBid(bid.id)
+        : null;
 
-    const lowBid = await getLowBid(
-      bid.id,
-      isAdmin,
-      submissionsResult
-    );
-
-    const finalized = bid.status === "finalized";
-
-    const resultHTML =
-      isAdmin
-        ? (
-            finalized
-              ? getAdminFinalizedSummary(bid, submissionsResult)
-              : ""
+    const winningBid =
+      bid.awarded_bid_id
+        ? await getWinningBid(
+            bid.awarded_bid_id
           )
-        : (
-            finalized
-              ? getVendorResultHTML(bid, myBid)
-              : ""
-          );
+        : null;
 
-    const lowBidHTML = buildLowBidHTML(
-      lowBid,
-      isAdmin,
-      Boolean(myBid),
-      finalized
-    );
+    const isFinalized =
+      bid.status === "finalized";
 
-    const card = document.createElement("article");
+    let summaryHTML = "";
+    let lowBidHTML = "";
+
+    /* ADMIN LOW BID */
+
+    if (isAdmin) {
+      if (lowBid) {
+        const vendorName =
+          lowBid.profiles?.vendor_name ||
+          lowBid.profiles?.email ||
+          "Unknown Vendor";
+
+        lowBidHTML = `
+          <p class="low-bid">
+            Current Low Bid:
+            $${Number(
+              lowBid.amount
+            ).toFixed(2)}
+            -
+            ${escapeHTML(vendorName)}
+          </p>
+        `;
+      } else {
+        lowBidHTML = `
+          <p class="low-bid">
+            Current Low Bid:
+            No bids yet
+          </p>
+        `;
+      }
+    }
+
+    /* VENDOR LOW BID */
+
+    if (
+      isVendor &&
+      myBid &&
+      !isFinalized
+    ) {
+      lowBidHTML =
+        lowBid
+          ? `
+            <p class="low-bid">
+              Current Low Bid:
+              $${Number(
+                lowBid.amount
+              ).toFixed(2)}
+            </p>
+          `
+          : "";
+    }
+
+    /*
+      Vendor who did not submit does not
+      see the current low bid.
+    */
+
+    if (
+      isVendor &&
+      !myBid
+    ) {
+      lowBidHTML = "";
+    }
+
+    /* VENDOR FINAL RESULT */
+
+    if (
+      isVendor &&
+      isFinalized
+    ) {
+      lowBidHTML = "";
+
+      if (!myBid) {
+        summaryHTML = `
+          <span class="result-label result-no-bid">
+            NO BID SUBMITTED
+          </span>
+        `;
+      } else if (
+        winningBid &&
+        Number(winningBid.id) ===
+        Number(myBid.id)
+      ) {
+        summaryHTML = `
+          <span class="result-label result-won">
+            WON
+          </span>
+        `;
+      } else {
+        summaryHTML = `
+          <span class="result-label result-lost">
+            LOST
+          </span>
+        `;
+      }
+    }
+
+    /* ADMIN FINAL RESULT */
+
+    if (
+      isAdmin &&
+      isFinalized
+    ) {
+      if (winningBid) {
+        const winnerName =
+          winningBid.profiles?.vendor_name ||
+          winningBid.profiles?.email ||
+          "Unknown Vendor";
+
+        summaryHTML = `
+          <div class="finalized-summary">
+
+            <span class="result-label result-won">
+              WON
+            </span>
+
+            ${escapeHTML(winnerName)}
+
+            |
+
+            $${Number(
+              winningBid.amount
+            ).toFixed(2)}
+
+          </div>
+        `;
+      } else {
+        summaryHTML = `
+          <div class="finalized-summary">
+            Finalized
+          </div>
+        `;
+      }
+    }
+
+    const card =
+      document.createElement("div");
 
     card.className = "bid-card";
-    card.id = `bid-card-${bid.id}`;
 
     card.innerHTML = `
       <div
         class="bid-header"
-        data-action="toggle"
-        data-bid-id="${bid.id}"
-        role="button"
-        tabindex="0"
+        onclick="toggleBid(${bid.id})"
       >
+
         <div class="bid-header-title">
-          <span id="arrow-${bid.id}" class="bid-arrow">
-            ${finalized ? "▶" : "▼"}
+
+          <span
+            id="arrow-${bid.id}"
+            class="bid-arrow"
+          >
+            ${isFinalized ? "▶" : "▼"}
           </span>
 
-          <h3>${escapeHTML(bid.title)}</h3>
+          <h3>
+            ${escapeHTML(bid.title)}
+          </h3>
+
         </div>
 
-        ${resultHTML}
+        ${summaryHTML}
+
       </div>
 
       <div
         id="details-${bid.id}"
-        class="bid-details ${finalized ? "collapsed" : "expanded"}"
+        class="bid-details ${
+          isFinalized
+            ? "collapsed"
+            : "expanded"
+        }"
       >
+
         <p>
           <strong>Description:</strong>
-          ${escapeHTML(bid.description || "")}
+          ${escapeHTML(
+            bid.description || ""
+          )}
         </p>
 
-        <div class="bid-grid">
-          <p><strong>Student ID:</strong> ${escapeHTML(bid.student_id)}</p>
-          <p><strong>Street Address:</strong> ${escapeHTML(bid.street_address)}</p>
-          <p><strong>Pickup Time:</strong> ${formatTime(bid.pickup_time)}</p>
-          <p><strong>School:</strong> ${escapeHTML(bid.school)}</p>
-          <p><strong>School Start Time:</strong> ${formatTime(bid.school_start_time)}</p>
-          <p><strong>Service Date:</strong> ${formatDate(bid.service_date)}</p>
+        <div class="grid">
+
+          <p>
+            <strong>Student ID:</strong>
+            ${escapeHTML(
+              bid.student_id || ""
+            )}
+          </p>
+
+          <p>
+            <strong>Street Address:</strong>
+            ${escapeHTML(
+              bid.street_address || ""
+            )}
+          </p>
+
+          <p>
+            <strong>Pickup Time:</strong>
+            ${formatTime(
+              bid.pickup_time
+            )}
+          </p>
+
+          <p>
+            <strong>School:</strong>
+            ${escapeHTML(
+              bid.school || ""
+            )}
+          </p>
+
+          <p>
+            <strong>School Start Time:</strong>
+            ${formatTime(
+              bid.school_start_time
+            )}
+          </p>
+
+          <p>
+            <strong>Service Date:</strong>
+            ${formatDate(
+              bid.service_date
+            )}
+          </p>
+
         </div>
 
-        <p><strong>Bid Opens:</strong> ${formatDateTime(bid.bid_open_date)}</p>
-        <p><strong>Bid Closes:</strong> ${formatDateTime(bid.bid_close_date)}</p>
+        <p>
+          <strong>Bid Opens:</strong>
+          ${formatDateTime(
+            bid.bid_open_date
+          )}
+        </p>
+
+        <p>
+          <strong>Bid Closes:</strong>
+          ${formatDateTime(
+            bid.bid_close_date
+          )}
+        </p>
 
         <p>
           <span class="status">
-            ${escapeHTML(String(bid.status).toUpperCase())}
+            ${escapeHTML(
+              String(
+                bid.status
+              ).toUpperCase()
+            )}
           </span>
         </p>
 
         ${lowBidHTML}
+
       </div>
     `;
 
-    const details = card.querySelector(`#details-${bid.id}`);
-
-    if (!isAdmin && !finalized && details) {
-      details.insertAdjacentHTML(
-        "beforeend",
-        vendorBidHTML(bid, myBid)
+    const details =
+      card.querySelector(
+        `#details-${bid.id}`
       );
+
+    if (
+      isVendor &&
+      !isFinalized
+    ) {
+      details.innerHTML +=
+        vendorBidHTML(
+          bid,
+          myBid
+        );
     }
 
-    if (isAdmin && details) {
-      details.insertAdjacentHTML(
-        "beforeend",
-        adminBidHTML(bid, submissionsResult)
-      );
+    if (isAdmin) {
+      details.innerHTML +=
+        await adminBidHTML(bid);
     }
 
     container.appendChild(card);
@@ -739,239 +716,199 @@ async function loadBids() {
 }
 
 /* =========================================================
-   BID LIST CLICK HANDLER
+   COLLAPSE / EXPAND
 ========================================================= */
 
-async function handleBidListClick(event) {
-  const actionElement = event.target.closest("[data-action]");
-
-  if (!actionElement) return;
-
-  const action = actionElement.dataset.action;
-  const bidId = Number(actionElement.dataset.bidId);
-  const submissionId = Number(actionElement.dataset.submissionId);
-
-  switch (action) {
-    case "toggle":
-      toggleBid(bidId);
-      break;
-
-    case "submit-bid":
-      await submitBid(bidId);
-      break;
-
-    case "edit-bid":
-      await editBid(bidId);
-      break;
-
-    case "close-bid":
-      await closeBid(bidId);
-      break;
-
-    case "finalize-bid":
-      await finalizeBid(bidId);
-      break;
-
-    case "delete-bid":
-      await deleteBid(bidId);
-      break;
-
-    case "award-bid":
-      await awardBid(bidId, submissionId);
-      break;
-  }
-}
-
 function toggleBid(bidId) {
-  const details = document.getElementById(`details-${bidId}`);
-  const arrow = document.getElementById(`arrow-${bidId}`);
+  const details =
+    document.getElementById(
+      `details-${bidId}`
+    );
 
-  if (!details) return;
+  const arrow =
+    document.getElementById(
+      `arrow-${bidId}`
+    );
 
-  const opening = details.classList.contains("collapsed");
+  if (!details) {
+    return;
+  }
 
-  details.classList.toggle("collapsed", !opening);
-  details.classList.toggle("expanded", opening);
+  const isCollapsed =
+    details.classList.contains(
+      "collapsed"
+    );
 
-  if (arrow) {
-    arrow.textContent = opening ? "▼" : "▶";
+  if (isCollapsed) {
+    details.classList.remove(
+      "collapsed"
+    );
+
+    details.classList.add(
+      "expanded"
+    );
+
+    if (arrow) {
+      arrow.textContent = "▼";
+    }
+  } else {
+    details.classList.remove(
+      "expanded"
+    );
+
+    details.classList.add(
+      "collapsed"
+    );
+
+    if (arrow) {
+      arrow.textContent = "▶";
+    }
   }
 }
 
 /* =========================================================
-   BID DATA
+   LOW BID
 ========================================================= */
 
-async function getMyBid(bidId) {
-  if (currentProfile.role !== "vendor") {
-    return null;
-  }
-
-  const { data, error } = await supabaseClient
-    .from("bid_submissions")
-    .select(`
-      id,
-      bid_id,
-      vendor_id,
-      amount,
-      notes,
-      created_at
-    `)
-    .eq("bid_id", bidId)
-    .eq("vendor_id", currentUser.id)
-    .maybeSingle();
+async function getLowBid(bidId) {
+  const { data, error } =
+    await supabaseClient
+      .from("bid_submissions")
+      .select(`
+        id,
+        bid_id,
+        vendor_id,
+        amount,
+        notes,
+        created_at,
+        profiles:vendor_id (
+          email,
+          vendor_name
+        )
+      `)
+      .eq("bid_id", bidId)
+      .order("amount", {
+        ascending: true
+      })
+      .order("created_at", {
+        ascending: true
+      })
+      .limit(1)
+      .maybeSingle();
 
   if (error) {
-    console.error("My bid error:", error);
+    console.error(
+      "Low bid error:",
+      error.message
+    );
+
     return null;
   }
 
   return data;
 }
 
-async function getAdminSubmissions(bidId) {
-  const { data, error } = await supabaseClient
-    .from("bid_submissions")
-    .select(`
-      id,
-      bid_id,
-      vendor_id,
-      amount,
-      notes,
-      created_at,
-      vendor:profiles!bid_submissions_vendor_profile_fk (
-        email,
-        vendor_name
-      )
-    `)
-    .eq("bid_id", bidId)
-    .order("amount", { ascending: true })
-    .order("created_at", { ascending: true });
+/* =========================================================
+   WINNING BID
+========================================================= */
 
-  if (error) {
-    console.error("Admin submissions error:", error);
-
-    return {
-      error: error.message,
-      rows: []
-    };
-  }
-
-  return {
-    error: null,
-    rows: data || []
-  };
-}
-
-async function getLowBid(bidId, isAdmin, submissionsResult) {
-  /*
-    Admin already has all submissions, so no RPC is needed.
-  */
-  if (isAdmin) {
-    return submissionsResult?.rows?.[0] || null;
-  }
-
-  /*
-    Vendors use the secure get_low_bid RPC.
-    It should return only amount, not vendor identity.
-  */
-  const { data, error } = await supabaseClient.rpc("get_low_bid", {
-    p_bid_id: bidId
-  });
-
-  if (error) {
-    console.error("Low bid RPC error:", error);
+async function getWinningBid(
+  awardedBidId
+) {
+  if (!awardedBidId) {
     return null;
   }
 
-  return Array.isArray(data)
-    ? data[0] || null
-    : data || null;
-}
+  const { data, error } =
+    await supabaseClient
+      .from("bid_submissions")
+      .select(`
+        id,
+        bid_id,
+        vendor_id,
+        amount,
+        notes,
+        created_at,
+        profiles:vendor_id (
+          email,
+          vendor_name
+        )
+      `)
+      .eq("id", awardedBidId)
+      .maybeSingle();
 
-function buildLowBidHTML(lowBid, isAdmin, vendorHasBid, finalized) {
-  if (isAdmin) {
-    if (!lowBid) {
-      return `<p class="low-bid">Current Low Bid: No bids yet</p>`;
-    }
+  if (error) {
+    console.error(
+      "Winning bid error:",
+      error.message
+    );
 
-    const vendorName =
-      lowBid.vendor?.vendor_name ||
-      lowBid.vendor?.email ||
-      lowBid.vendor_name ||
-      "";
-
-    return `
-      <p class="low-bid">
-        Current Low Bid:
-        $${Number(lowBid.amount).toFixed(2)}
-        ${vendorName ? ` - ${escapeHTML(vendorName)}` : ""}
-      </p>
-    `;
+    return null;
   }
 
-  /*
-    Vendors only see the current low amount after submitting.
-  */
-  if (!vendorHasBid || finalized || !lowBid) {
-    return "";
-  }
-
-  return `
-    <p class="low-bid">
-      Current Low Bid:
-      $${Number(lowBid.amount).toFixed(2)}
-    </p>
-  `;
-}
-
-function getVendorResultHTML(bid, myBid) {
-  if (!myBid) {
-    return `
-      <span class="result-label result-no-bid">
-        NO BID SUBMITTED
-      </span>
-    `;
-  }
-
-  return Number(bid.awarded_bid_id) === Number(myBid.id)
-    ? `<span class="result-label result-won">WON</span>`
-    : `<span class="result-label result-lost">LOST</span>`;
-}
-
-function getAdminFinalizedSummary(bid, submissionsResult) {
-  const rows = submissionsResult?.rows || [];
-
-  const winner = rows.find(
-    row => Number(row.id) === Number(bid.awarded_bid_id)
-  );
-
-  if (!winner) {
-    return `<div class="finalized-summary">Finalized</div>`;
-  }
-
-  const winnerName =
-    winner.vendor?.vendor_name ||
-    winner.vendor?.email ||
-    "Unknown Vendor";
-
-  return `
-    <div class="finalized-summary">
-      <span class="result-label result-won">WON</span>
-      ${escapeHTML(winnerName)} |
-      $${Number(winner.amount).toFixed(2)}
-    </div>
-  `;
+  return data;
 }
 
 /* =========================================================
-   VENDOR BID AREA
+   VENDOR'S OWN BID
 ========================================================= */
 
-function vendorBidHTML(bid, myBid) {
+async function getMyBid(bidId) {
+  if (
+    currentProfile.role !== "vendor"
+  ) {
+    return null;
+  }
+
+  const { data, error } =
+    await supabaseClient
+      .from("bid_submissions")
+      .select(`
+        id,
+        bid_id,
+        vendor_id,
+        amount,
+        notes,
+        created_at
+      `)
+      .eq("bid_id", bidId)
+      .eq(
+        "vendor_id",
+        currentUser.id
+      )
+      .maybeSingle();
+
+  if (error) {
+    console.error(
+      "My bid error:",
+      error.message
+    );
+
+    return null;
+  }
+
+  return data;
+}
+
+/* =========================================================
+   VENDOR BID FORM
+========================================================= */
+
+function vendorBidHTML(
+  bid,
+  myBid
+) {
   const now = new Date();
-  const openDate = new Date(bid.bid_open_date);
-  const closeDate = new Date(bid.bid_close_date);
+
+  const openDate =
+    new Date(
+      bid.bid_open_date
+    );
+
+  const closeDate =
+    new Date(
+      bid.bid_close_date
+    );
 
   const canBid =
     bid.status === "open" &&
@@ -981,164 +918,217 @@ function vendorBidHTML(bid, myBid) {
   if (!canBid) {
     return `
       <div class="vendor-bid-box">
+
         <h4>Your Bid</h4>
-        <p>Bidding is not currently open.</p>
+
+        <p>
+          Bidding is not currently open.
+        </p>
 
         ${
           myBid
             ? `
               <p>
-                <strong>Your Submitted Bid:</strong>
-                $${Number(myBid.amount).toFixed(2)}
+                <strong>
+                  Your Submitted Bid:
+                </strong>
+
+                $${Number(
+                  myBid.amount
+                ).toFixed(2)}
               </p>
             `
-            : `<p>You have not submitted a bid.</p>`
+            : `
+              <p>
+                You have not submitted a bid.
+              </p>
+            `
         }
+
       </div>
     `;
   }
 
   return `
     <div class="vendor-bid-box">
+
       <h4>Your Bid</h4>
 
       ${
         myBid
           ? `
             <p>
-              <strong>Your Current Bid:</strong>
-              $${Number(myBid.amount).toFixed(2)}
+              <strong>
+                Your Current Bid:
+              </strong>
+
+              $${Number(
+                myBid.amount
+              ).toFixed(2)}
             </p>
           `
-          : `<p>You have not submitted a bid yet.</p>`
+          : `
+            <p>
+              You have not submitted a bid yet.
+            </p>
+          `
       }
-
-      <label for="amount-${bid.id}">Bid Amount</label>
 
       <input
         id="amount-${bid.id}"
         type="number"
         min="0.01"
         step="0.01"
-        value="${myBid ? Number(myBid.amount).toFixed(2) : ""}"
+        value="${
+          myBid
+            ? Number(
+                myBid.amount
+              ).toFixed(2)
+            : ""
+        }"
         placeholder="Bid Amount"
       >
-
-      <label for="notes-${bid.id}">Optional Notes</label>
 
       <textarea
         id="notes-${bid.id}"
         placeholder="Optional Notes"
-      >${escapeHTML(myBid?.notes || "")}</textarea>
+      >${escapeHTML(
+        myBid?.notes || ""
+      )}</textarea>
 
       <button
         type="button"
-        data-action="submit-bid"
-        data-bid-id="${bid.id}"
+        onclick="submitBid(${bid.id})"
       >
-        ${myBid ? "Update Bid" : "Submit Bid"}
+        ${
+          myBid
+            ? "Update Bid"
+            : "Submit Bid"
+        }
       </button>
+
     </div>
   `;
 }
 
+/* =========================================================
+   SUBMIT BID
+========================================================= */
+
 async function submitBid(bidId) {
-  if (currentProfile.role !== "vendor") {
-    alert("Only vendors can submit bids.");
-    return;
-  }
-
-  const amount = Number(
-    document.getElementById(`amount-${bidId}`)?.value
-  );
-
-  const notes =
-    document.getElementById(`notes-${bidId}`)?.value.trim() || "";
-
-  if (!Number.isFinite(amount) || amount <= 0) {
-    alert("Enter a valid bid amount.");
-    return;
-  }
-
-  const { data: bid, error: bidError } = await supabaseClient
-    .from("transportation_bids")
-    .select("status, bid_open_date, bid_close_date")
-    .eq("id", bidId)
-    .single();
-
-  if (bidError) {
-    alert(bidError.message);
-    return;
-  }
-
-  const now = new Date();
-  const openDate = new Date(bid.bid_open_date);
-  const closeDate = new Date(bid.bid_close_date);
-
   if (
-    bid.status !== "open" ||
-    now < openDate ||
-    now > closeDate
+    currentProfile.role !== "vendor"
   ) {
-    alert("This bid is not currently open.");
-    await loadBids();
-    return;
-  }
-
-  const { error } = await supabaseClient
-    .from("bid_submissions")
-    .upsert(
-      {
-        bid_id: bidId,
-        vendor_id: currentUser.id,
-        amount,
-        notes
-      },
-      {
-        onConflict: "bid_id,vendor_id"
-      }
+    alert(
+      "Only vendors can submit bids."
     );
 
+    return;
+  }
+
+  const amount =
+    Number(
+      document
+        .getElementById(
+          `amount-${bidId}`
+        )
+        .value
+    );
+
+  const notes =
+    document
+      .getElementById(
+        `notes-${bidId}`
+      )
+      .value
+      .trim();
+
+  if (
+    !Number.isFinite(amount) ||
+    amount <= 0
+  ) {
+    alert(
+      "Enter a valid bid amount."
+    );
+
+    return;
+  }
+
+  const { error } =
+    await supabaseClient
+      .from("bid_submissions")
+      .upsert(
+        {
+          bid_id: bidId,
+          vendor_id: currentUser.id,
+          amount,
+          notes
+        },
+        {
+          onConflict:
+            "bid_id,vendor_id"
+        }
+      );
+
   if (error) {
-    console.error("Submit bid error:", error);
+    console.error(
+      "Submit bid error:",
+      error.message
+    );
+
     alert(error.message);
     return;
   }
 
   alert("Your bid was saved.");
+
   await loadBids();
 }
 
 /* =========================================================
-   ADMIN AREA
+   ADMIN BID TABLE
 ========================================================= */
 
-function adminBidHTML(bid, submissionsResult) {
-  const rows = submissionsResult?.rows || [];
-  const loadError = submissionsResult?.error;
+async function adminBidHTML(bid) {
+  const { data: submissions, error } =
+    await supabaseClient
+      .from("bid_submissions")
+      .select(`
+        id,
+        bid_id,
+        vendor_id,
+        amount,
+        notes,
+        created_at,
+        profiles:vendor_id (
+          email,
+          vendor_name
+        )
+      `)
+      .eq("bid_id", bid.id)
+      .order("amount", {
+        ascending: true
+      })
+      .order("created_at", {
+        ascending: true
+      });
 
   let html = `
     <div class="admin-box">
+
       <h4>Admin Controls</h4>
 
       <div class="admin-buttons">
-        <button
-          type="button"
-          class="warning"
-          data-action="edit-bid"
-          data-bid-id="${bid.id}"
-        >
-          Edit Bid
-        </button>
   `;
 
-  if (bid.status !== "finalized") {
+  if (
+    bid.status !== "finalized"
+  ) {
     html += `
       <button
         type="button"
         class="gray"
-        data-action="close-bid"
-        data-bid-id="${bid.id}"
+        onclick="closeBid(${bid.id})"
       >
         Close Bid
       </button>
@@ -1146,8 +1136,7 @@ function adminBidHTML(bid, submissionsResult) {
       <button
         type="button"
         class="success"
-        data-action="finalize-bid"
-        data-bid-id="${bid.id}"
+        onclick="finalizeBid(${bid.id})"
       >
         Finalize Bid
       </button>
@@ -1155,39 +1144,57 @@ function adminBidHTML(bid, submissionsResult) {
   }
 
   html += `
-        <button
-          type="button"
-          class="danger"
-          data-action="delete-bid"
-          data-bid-id="${bid.id}"
-        >
-          Delete Bid
-        </button>
+      <button
+        type="button"
+        class="danger"
+        onclick="deleteBid(${bid.id})"
+      >
+        Delete Bid
+      </button>
+
       </div>
   `;
 
-  if (loadError) {
-    return `
-      ${html}
+  if (error) {
+    console.error(
+      "Admin bid error:",
+      error.message
+    );
+
+    html += `
       <p class="error-message">
         Error loading vendor bids:
-        ${escapeHTML(loadError)}
+        ${escapeHTML(
+          error.message
+        )}
       </p>
-      </div>
+
+    </div>
     `;
+
+    return html;
   }
 
-  if (!rows.length) {
-    return `
-      ${html}
-      <p>No vendor bids submitted yet.</p>
-      </div>
+  if (
+    !submissions ||
+    submissions.length === 0
+  ) {
+    html += `
+      <p>
+        No vendor bids submitted yet.
+      </p>
+
+    </div>
     `;
+
+    return html;
   }
 
   html += `
     <div class="table-wrapper">
+
       <table>
+
         <thead>
           <tr>
             <th>Vendor</th>
@@ -1202,118 +1209,161 @@ function adminBidHTML(bid, submissionsResult) {
         <tbody>
   `;
 
-  for (const submission of rows) {
-    const isWinner =
-      Number(bid.awarded_bid_id) === Number(submission.id);
+  submissions.forEach(
+    submission => {
+      const isWinner =
+        Number(
+          bid.awarded_bid_id
+        ) ===
+        Number(
+          submission.id
+        );
 
-    const vendorName =
-      submission.vendor?.vendor_name ||
-      submission.vendor?.email ||
-      "Unknown Vendor";
+      const vendorName =
+        submission.profiles?.vendor_name ||
+        submission.profiles?.email ||
+        "Unknown Vendor";
 
-    const vendorEmail =
-      submission.vendor?.email ||
-      "";
+      const vendorEmail =
+        submission.profiles?.email ||
+        "";
 
-    let actionHTML;
+      let actionHTML = "";
 
-    if (bid.status === "finalized") {
-      actionHTML = isWinner
-        ? `<span class="result-label result-won">WON</span>`
-        : `<span class="result-label result-lost">LOST</span>`;
-    } else if (isWinner) {
-      actionHTML = `
-        <button
-          type="button"
-          class="success"
-          data-action="award-bid"
-          data-bid-id="${bid.id}"
-          data-submission-id="${submission.id}"
-        >
-          Selected Winner
-        </button>
-      `;
-    } else {
-      actionHTML = `
-        <button
-          type="button"
-          data-action="award-bid"
-          data-bid-id="${bid.id}"
-          data-submission-id="${submission.id}"
-        >
-          Select
-        </button>
+      if (
+        bid.status === "finalized"
+      ) {
+        actionHTML =
+          isWinner
+            ? `
+              <span class="result-label result-won">
+                WON
+              </span>
+            `
+            : `
+              <span class="result-label result-lost">
+                LOST
+              </span>
+            `;
+      } else if (isWinner) {
+        actionHTML = `
+          <button
+            type="button"
+            class="success"
+            onclick="awardBid(
+              ${bid.id},
+              ${submission.id}
+            )"
+          >
+            Selected Winner
+          </button>
+        `;
+      } else {
+        actionHTML = `
+          <button
+            type="button"
+            onclick="awardBid(
+              ${bid.id},
+              ${submission.id}
+            )"
+          >
+            Select
+          </button>
+        `;
+      }
+
+      html += `
+        <tr class="${
+          isWinner
+            ? "winner-row"
+            : ""
+        }">
+
+          <td>
+            ${escapeHTML(
+              vendorName
+            )}
+          </td>
+
+          <td>
+            ${escapeHTML(
+              vendorEmail
+            )}
+          </td>
+
+          <td>
+            $${Number(
+              submission.amount
+            ).toFixed(2)}
+          </td>
+
+          <td>
+            ${escapeHTML(
+              submission.notes || ""
+            )}
+          </td>
+
+          <td>
+            ${formatDateTime(
+              submission.created_at
+            )}
+          </td>
+
+          <td>
+            ${actionHTML}
+          </td>
+
+        </tr>
       `;
     }
-
-    html += `
-      <tr class="${isWinner ? "winner-row" : ""}">
-        <td>${escapeHTML(vendorName)}</td>
-        <td>${escapeHTML(vendorEmail)}</td>
-        <td>$${Number(submission.amount).toFixed(2)}</td>
-        <td>${escapeHTML(submission.notes || "")}</td>
-        <td>${formatDateTime(submission.created_at)}</td>
-        <td>${actionHTML}</td>
-      </tr>
-    `;
-  }
+  );
 
   html += `
         </tbody>
+
       </table>
+
     </div>
+
   </div>
   `;
 
   return html;
 }
 
-async function awardBid(bidId, submissionId) {
-  if (currentProfile.role !== "admin") {
-    alert("Only administrators can select a winner.");
-    return;
-  }
+/* =========================================================
+   SELECT WINNER
+========================================================= */
 
-  if (!confirm("Select this vendor as the winning bidder?")) {
-    return;
-  }
-
-  const { error } = await supabaseClient
-    .from("transportation_bids")
-    .update({
-      awarded_bid_id: submissionId,
-      status: "awarded"
-    })
-    .eq("id", bidId);
-
-  if (error) {
-    alert(error.message);
-    return;
-  }
-
-  await loadBids();
-}
-
-async function closeBid(bidId) {
-  if (currentProfile.role !== "admin") {
-    alert("Only administrators can close bids.");
+async function awardBid(
+  bidId,
+  submissionId
+) {
+  if (
+    currentProfile.role !== "admin"
+  ) {
     return;
   }
 
   if (
     !confirm(
-      "Close this bid? Vendors will no longer be able to submit or update bids."
+      "Select this vendor as the winning bidder?"
     )
   ) {
     return;
   }
 
-  const { error } = await supabaseClient
-    .from("transportation_bids")
-    .update({
-      status: "closed"
-    })
-    .eq("id", bidId);
+  const { error } =
+    await supabaseClient
+      .from("transportation_bids")
+      .update({
+        awarded_bid_id:
+          submissionId,
+
+        status:
+          "awarded"
+      })
+      .eq("id", bidId);
 
   if (error) {
     alert(error.message);
@@ -1323,13 +1373,56 @@ async function closeBid(bidId) {
   await loadBids();
 }
 
-async function finalizeBid(bidId) {
-  if (currentProfile.role !== "admin") {
-    alert("Only administrators can finalize bids.");
+/* =========================================================
+   CLOSE BID
+========================================================= */
+
+async function closeBid(bidId) {
+  if (
+    currentProfile.role !== "admin"
+  ) {
     return;
   }
 
-  const { data: bid, error: readError } = await supabaseClient
+  if (
+    !confirm(
+      "Close this bid?"
+    )
+  ) {
+    return;
+  }
+
+  const { error } =
+    await supabaseClient
+      .from("transportation_bids")
+      .update({
+        status: "closed"
+      })
+      .eq("id", bidId);
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  await loadBids();
+}
+
+/* =========================================================
+   FINALIZE BID
+========================================================= */
+
+async function finalizeBid(bidId) {
+  if (
+    currentProfile.role !== "admin"
+  ) {
+    return;
+  }
+
+  const {
+    data: bid,
+    error: readError
+  } = await supabaseClient
     .from("transportation_bids")
     .select("awarded_bid_id")
     .eq("id", bidId)
@@ -1341,222 +1434,151 @@ async function finalizeBid(bidId) {
   }
 
   if (!bid.awarded_bid_id) {
-    alert("Select a winning vendor before finalizing the bid.");
-    return;
-  }
+    alert(
+      "Please select a winning vendor before finalizing."
+    );
 
-  if (!confirm("Finalize this bid? Vendors will see WON or LOST.")) {
-    return;
-  }
-
-  const { error } = await supabaseClient
-    .from("transportation_bids")
-    .update({
-      status: "finalized"
-    })
-    .eq("id", bidId);
-
-  if (error) {
-    alert(error.message);
-    return;
-  }
-
-  await loadBids();
-}
-
-async function deleteBid(bidId) {
-  if (currentProfile.role !== "admin") {
-    alert("Only administrators can delete bids.");
     return;
   }
 
   if (
     !confirm(
-      "Delete this bid and all connected vendor submissions?"
+      "Finalize this bid?"
     )
   ) {
     return;
   }
 
-  const { error } = await supabaseClient
-    .from("transportation_bids")
-    .delete()
-    .eq("id", bidId);
+  const { error } =
+    await supabaseClient
+      .from("transportation_bids")
+      .update({
+        status: "finalized"
+      })
+      .eq("id", bidId);
 
   if (error) {
     alert(error.message);
     return;
   }
 
-  if (editingBidId === bidId) {
-    cancelBidEdit();
+  await loadBids();
+}
+
+/* =========================================================
+   DELETE BID
+========================================================= */
+
+async function deleteBid(bidId) {
+  if (
+    currentProfile.role !== "admin"
+  ) {
+    return;
+  }
+
+  if (
+    !confirm(
+      "Delete this bid and all vendor submissions?"
+    )
+  ) {
+    return;
+  }
+
+  const { error } =
+    await supabaseClient
+      .from("transportation_bids")
+      .delete()
+      .eq("id", bidId);
+
+  if (error) {
+    alert(error.message);
+    return;
   }
 
   await loadBids();
 }
 
 /* =========================================================
-   DATE / TIME HELPERS
+   FORMAT DATES AND TIMES
 ========================================================= */
 
-function localInputToDate(value) {
-  if (!value) return null;
-
-  const match = value.match(
-    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/
-  );
-
-  if (!match) return null;
-
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-  const hour = Number(match[4]);
-  const minute = Number(match[5]);
-
-  const date = new Date(
-    year,
-    month - 1,
-    day,
-    hour,
-    minute,
-    0,
-    0
-  );
-
-  return Number.isNaN(date.getTime())
-    ? null
-    : date;
-}
-
-function isoToLocalInput(value) {
-  if (!value) return "";
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
+function formatDate(value) {
+  if (!value) {
     return "";
   }
 
-  return [
-    date.getFullYear(),
-    "-",
-    pad2(date.getMonth() + 1),
-    "-",
-    pad2(date.getDate()),
-    "T",
-    pad2(date.getHours()),
-    ":",
-    pad2(date.getMinutes())
-  ].join("");
-}
+  const date =
+    new Date(
+      `${value}T00:00:00`
+    );
 
-function normalizeTimeForInput(value) {
-  if (!value) return "";
-
-  const parts = String(value).split(":");
-
-  return parts.length >= 2
-    ? `${pad2(parts[0])}:${pad2(parts[1])}`
-    : "";
-}
-
-function formatDate(value) {
-  if (!value) return "";
-
-  const [year, month, day] =
-    String(value).split("-").map(Number);
-
-  const date = new Date(year, month - 1, day);
-
-  return Number.isNaN(date.getTime())
-    ? escapeHTML(value)
-    : date.toLocaleDateString("en-US");
+  return date.toLocaleDateString(
+    "en-US"
+  );
 }
 
 function formatDateTime(value) {
-  if (!value) return "";
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return escapeHTML(value);
+  if (!value) {
+    return "";
   }
 
-  return date.toLocaleString("en-US", {
-    month: "numeric",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true
-  });
+  const date =
+    new Date(value);
+
+  return date.toLocaleString(
+    "en-US"
+  );
 }
 
 function formatTime(value) {
-  if (!value) return "";
-
-  const parts = String(value).split(":");
-
-  if (parts.length < 2) {
-    return escapeHTML(value);
+  if (!value) {
+    return "";
   }
 
-  let hour = Number(parts[0]);
-  const minute = parts[1];
+  const parts =
+    String(value).split(":");
 
-  if (!Number.isFinite(hour)) {
-    return escapeHTML(value);
-  }
+  let hour =
+    Number(parts[0]);
 
-  const period = hour >= 12 ? "PM" : "AM";
+  const minute =
+    parts[1];
 
-  hour = hour % 12 || 12;
+  const period =
+    hour >= 12
+      ? "PM"
+      : "AM";
+
+  hour =
+    hour % 12 || 12;
 
   return `${hour}:${minute} ${period}`;
 }
 
 /* =========================================================
-   HELPERS
+   ESCAPE HTML
 ========================================================= */
-
-function valueOf(id) {
-  return document.getElementById(id)?.value.trim() || "";
-}
-
-function setValue(id, value) {
-  const element = document.getElementById(id);
-
-  if (element) {
-    element.value = value || "";
-  }
-}
-
-function pad2(value) {
-  return String(value).padStart(2, "0");
-}
-
-function setButtonBusy(button, busy, text) {
-  if (!button) return;
-
-  button.disabled = busy;
-  button.textContent = text;
-}
 
 function escapeHTML(value) {
   return String(value ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+    .replaceAll(
+      "&",
+      "&amp;"
+    )
+    .replaceAll(
+      "<",
+      "&lt;"
+    )
+    .replaceAll(
+      ">",
+      "&gt;"
+    )
+    .replaceAll(
+      '"',
+      "&quot;"
+    )
+    .replaceAll(
+      "'",
+      "&#039;"
+    );
 }
-'''
-
-out = Path("/mnt/data/transportation_bidding_clean")
-out.mkdir(exist_ok=True)
-(out/"index.html").write_text(html, encoding="utf-8")
-(out/"script.js").write_text(js, encoding="utf-8")
-
-print("Created:", out/"index.html")
-print("Created:", out/"script.js")
