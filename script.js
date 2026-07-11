@@ -1,4 +1,185 @@
-let currentUser = null;
+from pathlib import Path
+
+html = r'''<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Transportation Bidding System</title>
+  <link rel="stylesheet" href="./style.css?v=30">
+</head>
+
+<body>
+
+  <!-- LOGIN PAGE -->
+  <section id="loginPage" class="login-card">
+    <h1>Transportation Bidding</h1>
+    <h2>Staff / Vendor Login</h2>
+
+    <form id="loginForm">
+      <input
+        id="email"
+        type="email"
+        autocomplete="username"
+        placeholder="Email"
+        required
+      >
+
+      <input
+        id="password"
+        type="password"
+        autocomplete="current-password"
+        placeholder="Password"
+        required
+      >
+
+      <button id="loginButton" type="submit">Login</button>
+    </form>
+
+    <p id="loginMessage"></p>
+  </section>
+
+  <!-- APPLICATION -->
+  <div id="appPage" class="hidden">
+
+    <header>
+      <div>
+        <h1>Transportation Bidding System</h1>
+        <p id="welcomeMessage"></p>
+      </div>
+
+      <button id="logoutButton" type="button">Logout</button>
+    </header>
+
+    <main>
+
+      <!-- ADMIN CREATE / EDIT FORM -->
+      <section id="adminPanel" class="card hidden">
+
+        <h2 id="bidFormHeading">Create Transportation Bid</h2>
+
+        <p id="editMessage" class="edit-message hidden">
+          You are editing an existing transportation bid.
+        </p>
+
+        <form id="bidForm">
+
+          <input
+            id="bidTitle"
+            type="text"
+            placeholder="Bid Title"
+            required
+          >
+
+          <textarea
+            id="bidDescription"
+            placeholder="Bid Description / Notes"
+          ></textarea>
+
+          <div class="grid">
+            <input
+              id="studentId"
+              type="text"
+              placeholder="Student ID"
+              required
+            >
+
+            <input
+              id="streetAddress"
+              type="text"
+              placeholder="Street Address"
+              required
+            >
+          </div>
+
+          <div class="grid">
+            <div>
+              <label for="pickupTime">Pickup Time</label>
+              <input
+                id="pickupTime"
+                type="time"
+                required
+              >
+            </div>
+
+            <div>
+              <label for="schoolStartTime">School Start Time</label>
+              <input
+                id="schoolStartTime"
+                type="time"
+                required
+              >
+            </div>
+          </div>
+
+          <input
+            id="school"
+            type="text"
+            placeholder="School"
+            required
+          >
+
+          <div class="grid">
+            <div>
+              <label for="serviceDate">Service Date</label>
+              <input
+                id="serviceDate"
+                type="date"
+                required
+              >
+            </div>
+
+            <div>
+              <label for="bidOpenDate">Bid Opens</label>
+              <input
+                id="bidOpenDate"
+                type="datetime-local"
+                required
+              >
+            </div>
+
+            <div>
+              <label for="bidCloseDate">Bid Closes</label>
+              <input
+                id="bidCloseDate"
+                type="datetime-local"
+                required
+              >
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button id="saveBidButton" type="submit">Post Bid</button>
+
+            <button
+              id="cancelEditButton"
+              class="gray hidden"
+              type="button"
+            >
+              Cancel Edit
+            </button>
+          </div>
+
+        </form>
+      </section>
+
+      <!-- BIDS -->
+      <section class="card">
+        <h2>Transportation Bids</h2>
+        <div id="bidsList"></div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./supabase-config.js?v=30"></script>
+  <script src="./script.js?v=30"></script>
+</body>
+</html>
+'''
+
+js = r'''let currentUser = null;
 let currentProfile = null;
 let editingBidId = null;
 
@@ -6,10 +187,13 @@ let editingBidId = null;
    STARTUP
 ========================================================= */
 
-document.addEventListener("DOMContentLoaded", async () => {
+document.addEventListener("DOMContentLoaded", initializeApp);
+
+async function initializeApp() {
+  bindStaticEvents();
+
   try {
-    const { data, error } =
-      await supabaseClient.auth.getSession();
+    const { data, error } = await supabaseClient.auth.getSession();
 
     if (error) {
       console.error("Session error:", error);
@@ -25,7 +209,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     currentUser = data.session.user;
 
-    const profileLoaded = await getCurrentProfile();
+    const profileLoaded = await loadCurrentProfile();
 
     if (!profileLoaded) {
       showLogin();
@@ -38,87 +222,92 @@ document.addEventListener("DOMContentLoaded", async () => {
     showLoginMessage(error.message || "Unable to start the application.");
     showLogin();
   }
-});
+}
+
+function bindStaticEvents() {
+  document
+    .getElementById("loginForm")
+    ?.addEventListener("submit", handleLoginSubmit);
+
+  document
+    .getElementById("logoutButton")
+    ?.addEventListener("click", logout);
+
+  document
+    .getElementById("bidForm")
+    ?.addEventListener("submit", handleBidFormSubmit);
+
+  document
+    .getElementById("cancelEditButton")
+    ?.addEventListener("click", cancelBidEdit);
+
+  document
+    .getElementById("bidsList")
+    ?.addEventListener("click", handleBidListClick);
+}
 
 /* =========================================================
-   LOGIN
+   LOGIN / LOGOUT
 ========================================================= */
 
-async function login() {
-  const email = document.getElementById("email").value.trim();
-  const password = document.getElementById("password").value;
-  const message = document.getElementById("loginMessage");
+async function handleLoginSubmit(event) {
+  event.preventDefault();
+  await login();
+}
 
-  message.textContent = "Attempting login...";
+async function login() {
+  const email = valueOf("email");
+  const password = document.getElementById("password")?.value || "";
+
+  showLoginMessage("");
+
+  if (!email || !password) {
+    showLoginMessage("Please enter your email and password.");
+    return;
+  }
+
+  const loginButton = document.getElementById("loginButton");
+  setButtonBusy(loginButton, true, "Logging in...");
 
   try {
-    console.log("Starting login for:", email);
-    console.log("Supabase client:", supabaseClient);
-
     const { data, error } =
       await supabaseClient.auth.signInWithPassword({
         email,
         password
       });
 
-    console.log("Login data:", data);
-    console.log("Login error:", error);
-
     if (error) {
-      message.textContent = `Login error: ${error.message}`;
+      console.error("Login error:", error);
+      showLoginMessage(error.message);
       return;
     }
 
-    if (!data.session || !data.user) {
-      message.textContent =
-        "Supabase did not return a valid user session.";
+    if (!data.user || !data.session) {
+      showLoginMessage("Login did not return a valid user session.");
       return;
     }
 
     currentUser = data.user;
 
-    message.textContent = "Login successful. Loading profile...";
+    const profileLoaded = await loadCurrentProfile();
 
-    const { data: profile, error: profileError } =
-      await supabaseClient
-        .from("profiles")
-        .select("*")
-        .eq("id", currentUser.id)
-        .maybeSingle();
-
-    console.log("Profile:", profile);
-    console.log("Profile error:", profileError);
-
-    if (profileError) {
-      message.textContent =
-        `Profile error: ${profileError.message}`;
+    if (!profileLoaded) {
+      await supabaseClient.auth.signOut();
       return;
     }
 
-    if (!profile) {
-      message.textContent =
-        "Login worked, but this user does not have a profile record.";
-      return;
-    }
-
-    currentProfile = profile;
-    message.textContent = "";
-
+    showLoginMessage("");
     showApp();
   } catch (error) {
-    console.error("Unexpected login error:", error);
-
-    message.textContent =
-      `Unexpected error: ${error.message}`;
+    console.error("Login exception:", error);
+    showLoginMessage(error.message || "Unexpected login error.");
+  } finally {
+    setButtonBusy(loginButton, false, "Login");
   }
 }
-/* =========================================================
-   LOGOUT
-========================================================= */
 
 async function logout() {
-  const { error } =
-    await supabaseClient.auth.signOut();
+  const { error } = await supabaseClient.auth.signOut();
 
   if (error) {
     alert(error.message);
@@ -129,10 +318,10 @@ async function logout() {
   currentProfile = null;
   editingBidId = null;
 
-  document.getElementById("email").value = "";
-  document.getElementById("password").value = "";
-
+  setValue("email", "");
+  setValue("password", "");
   showLoginMessage("");
+  cancelBidEdit();
   showLogin();
 }
 
@@ -141,45 +330,31 @@ async function logout() {
 ========================================================= */
 
 function showLogin() {
-  document
-    .getElementById("loginPage")
-    .classList
-    .remove("hidden");
-
-  document
-    .getElementById("appPage")
-    .classList
-    .add("hidden");
+  document.getElementById("loginPage")?.classList.remove("hidden");
+  document.getElementById("appPage")?.classList.add("hidden");
 }
 
 function showApp() {
-  document
-    .getElementById("loginPage")
-    .classList
-    .add("hidden");
+  document.getElementById("loginPage")?.classList.add("hidden");
+  document.getElementById("appPage")?.classList.remove("hidden");
 
-  document
-    .getElementById("appPage")
-    .classList
-    .remove("hidden");
+  const welcome = document.getElementById("welcomeMessage");
 
-  document.getElementById("welcomeMessage").textContent =
-    `${currentProfile.vendor_name || currentUser.email} | Role: ${currentProfile.role}`;
+  if (welcome) {
+    welcome.textContent =
+      `${currentProfile.vendor_name || currentUser.email} | Role: ${currentProfile.role}`;
+  }
 
-  document
-    .getElementById("adminPanel")
-    .classList
-    .toggle(
-      "hidden",
-      currentProfile.role !== "admin"
-    );
+  document.getElementById("adminPanel")?.classList.toggle(
+    "hidden",
+    currentProfile.role !== "admin"
+  );
 
   loadBids();
 }
 
 function showLoginMessage(message) {
-  const element =
-    document.getElementById("loginMessage");
+  const element = document.getElementById("loginMessage");
 
   if (element) {
     element.textContent = message || "";
@@ -190,38 +365,59 @@ function showLoginMessage(message) {
    PROFILE
 ========================================================= */
 
-async function getCurrentProfile() {
-  const { data, error } =
-    await supabaseClient.rpc(
-      "get_or_create_my_profile"
-    );
+async function loadCurrentProfile() {
+  /*
+    This version reads the profile directly.
+    It does not require a custom profile RPC.
+  */
+
+  const { data, error } = await supabaseClient
+    .from("profiles")
+    .select("*")
+    .eq("id", currentUser.id)
+    .maybeSingle();
 
   if (error) {
-    console.error("Profile function error:", error);
-
-    showLoginMessage(
-      `Profile error: ${error.message}`
-    );
-
+    console.error("Profile loading error:", error);
+    showLoginMessage(`Profile error: ${error.message}`);
     return false;
   }
 
-  if (!data) {
-    showLoginMessage(
-      "Your account logged in, but no profile was returned."
-    );
+  if (data) {
+    currentProfile = data;
+    return true;
+  }
 
+  const { data: createdProfile, error: createError } =
+    await supabaseClient
+      .from("profiles")
+      .insert({
+        id: currentUser.id,
+        email: currentUser.email,
+        role: "vendor",
+        vendor_name: currentUser.email
+      })
+      .select()
+      .single();
+
+  if (createError) {
+    console.error("Profile creation error:", createError);
+    showLoginMessage(`Profile creation error: ${createError.message}`);
     return false;
   }
 
-  currentProfile = data;
-
+  currentProfile = createdProfile;
   return true;
 }
 
 /* =========================================================
    CREATE / UPDATE BID
 ========================================================= */
+
+async function handleBidFormSubmit(event) {
+  event.preventDefault();
+  await saveBid();
+}
 
 async function saveBid() {
   if (currentProfile.role !== "admin") {
@@ -277,36 +473,53 @@ async function saveBid() {
     school,
     school_start_time: schoolStartTime,
     service_date: serviceDate,
+
+    /*
+      datetime-local is entered in the browser's local time.
+      Converting to ISO stores the correct absolute time in Supabase.
+    */
     bid_open_date: openDate.toISOString(),
     bid_close_date: closeDate.toISOString()
   };
 
-  let result;
+  const saveButton = document.getElementById("saveBidButton");
 
-  if (editingBidId !== null) {
-    result = await supabaseClient
-      .from("transportation_bids")
-      .update(bidData)
-      .eq("id", editingBidId);
-  } else {
-    result = await supabaseClient
-      .from("transportation_bids")
-      .insert({
-        ...bidData,
-        status: "open",
-        created_by: currentUser.id
-      });
+  setButtonBusy(
+    saveButton,
+    true,
+    editingBidId === null ? "Posting..." : "Updating..."
+  );
+
+  try {
+    let result;
+
+    if (editingBidId !== null) {
+      result = await supabaseClient
+        .from("transportation_bids")
+        .update(bidData)
+        .eq("id", editingBidId);
+    } else {
+      result = await supabaseClient
+        .from("transportation_bids")
+        .insert({
+          ...bidData,
+          created_by: currentUser.id,
+          status: "open"
+        });
+    }
+
+    if (result.error) {
+      console.error("Save bid error:", result.error);
+      alert(result.error.message);
+      return;
+    }
+
+    alert(editingBidId === null ? "Bid posted." : "Bid updated.");
+    cancelBidEdit();
+    await loadBids();
+  } finally {
+    setButtonBusy(saveButton, false, editingBidId === null ? "Post Bid" : "Update Bid");
   }
-
-  if (result.error) {
-    console.error("Save bid error:", result.error);
-    alert(result.error.message);
-    return;
-  }
-
-  alert(editingBidId !== null ? "Bid updated." : "Bid posted.");
-  cancelBidEdit();
-  await loadBids();
 }
 
 async function editBid(bidId) {
@@ -341,13 +554,12 @@ async function editBid(bidId) {
 
   const heading = document.getElementById("bidFormHeading");
   const saveButton = document.getElementById("saveBidButton");
-  const cancelButton = document.getElementById("cancelEditButton");
-  const editMessage = document.getElementById("editMessage");
 
   if (heading) heading.textContent = "Edit Transportation Bid";
   if (saveButton) saveButton.textContent = "Update Bid";
-  cancelButton?.classList.remove("hidden");
-  editMessage?.classList.remove("hidden");
+
+  document.getElementById("cancelEditButton")?.classList.remove("hidden");
+  document.getElementById("editMessage")?.classList.remove("hidden");
 
   document.getElementById("adminPanel")?.scrollIntoView({
     behavior: "smooth",
@@ -361,13 +573,12 @@ function cancelBidEdit() {
 
   const heading = document.getElementById("bidFormHeading");
   const saveButton = document.getElementById("saveBidButton");
-  const cancelButton = document.getElementById("cancelEditButton");
-  const editMessage = document.getElementById("editMessage");
 
   if (heading) heading.textContent = "Create Transportation Bid";
   if (saveButton) saveButton.textContent = "Post Bid";
-  cancelButton?.classList.add("hidden");
-  editMessage?.classList.add("hidden");
+
+  document.getElementById("cancelEditButton")?.classList.add("hidden");
+  document.getElementById("editMessage")?.classList.add("hidden");
 }
 
 function clearBidForm() {
@@ -386,11 +597,12 @@ function clearBidForm() {
 }
 
 /* =========================================================
-   LOAD BID CARDS
+   LOAD BIDS
 ========================================================= */
 
 async function loadBids() {
   const container = document.getElementById("bidsList");
+
   if (!container) return;
 
   container.innerHTML = "<p>Loading transportation bids...</p>";
@@ -418,22 +630,31 @@ async function loadBids() {
 
   for (const bid of bids) {
     const myBid = isAdmin ? null : await getMyBid(bid.id);
-    const lowBid = await getLowBid(bid.id);
+
     const submissionsResult = isAdmin
       ? await getAdminSubmissions(bid.id)
       : { error: null, rows: [] };
 
+    const lowBid = await getLowBid(
+      bid.id,
+      isAdmin,
+      submissionsResult
+    );
+
     const finalized = bid.status === "finalized";
 
-    const vendorResultHTML =
-      !isAdmin && finalized
-        ? getVendorResultHTML(bid, myBid)
-        : "";
-
-    const adminSummaryHTML =
-      isAdmin && finalized
-        ? getAdminFinalizedSummary(bid, submissionsResult)
-        : "";
+    const resultHTML =
+      isAdmin
+        ? (
+            finalized
+              ? getAdminFinalizedSummary(bid, submissionsResult)
+              : ""
+          )
+        : (
+            finalized
+              ? getVendorResultHTML(bid, myBid)
+              : ""
+          );
 
     const lowBidHTML = buildLowBidHTML(
       lowBid,
@@ -443,13 +664,15 @@ async function loadBids() {
     );
 
     const card = document.createElement("article");
+
     card.className = "bid-card";
     card.id = `bid-card-${bid.id}`;
 
     card.innerHTML = `
       <div
         class="bid-header"
-        onclick="toggleBid(${bid.id})"
+        data-action="toggle"
+        data-bid-id="${bid.id}"
         role="button"
         tabindex="0"
       >
@@ -457,10 +680,11 @@ async function loadBids() {
           <span id="arrow-${bid.id}" class="bid-arrow">
             ${finalized ? "▶" : "▼"}
           </span>
+
           <h3>${escapeHTML(bid.title)}</h3>
         </div>
 
-        ${isAdmin ? adminSummaryHTML : vendorResultHTML}
+        ${resultHTML}
       </div>
 
       <div
@@ -514,38 +738,69 @@ async function loadBids() {
   }
 }
 
+/* =========================================================
+   BID LIST CLICK HANDLER
+========================================================= */
+
+async function handleBidListClick(event) {
+  const actionElement = event.target.closest("[data-action]");
+
+  if (!actionElement) return;
+
+  const action = actionElement.dataset.action;
+  const bidId = Number(actionElement.dataset.bidId);
+  const submissionId = Number(actionElement.dataset.submissionId);
+
+  switch (action) {
+    case "toggle":
+      toggleBid(bidId);
+      break;
+
+    case "submit-bid":
+      await submitBid(bidId);
+      break;
+
+    case "edit-bid":
+      await editBid(bidId);
+      break;
+
+    case "close-bid":
+      await closeBid(bidId);
+      break;
+
+    case "finalize-bid":
+      await finalizeBid(bidId);
+      break;
+
+    case "delete-bid":
+      await deleteBid(bidId);
+      break;
+
+    case "award-bid":
+      await awardBid(bidId, submissionId);
+      break;
+  }
+}
+
 function toggleBid(bidId) {
   const details = document.getElementById(`details-${bidId}`);
   const arrow = document.getElementById(`arrow-${bidId}`);
 
   if (!details) return;
 
-  const isOpening = details.classList.contains("collapsed");
+  const opening = details.classList.contains("collapsed");
 
-  details.classList.toggle("collapsed", !isOpening);
-  details.classList.toggle("expanded", isOpening);
+  details.classList.toggle("collapsed", !opening);
+  details.classList.toggle("expanded", opening);
 
   if (arrow) {
-    arrow.textContent = isOpening ? "▼" : "▶";
+    arrow.textContent = opening ? "▼" : "▶";
   }
 }
 
 /* =========================================================
    BID DATA
 ========================================================= */
-
-async function getLowBid(bidId) {
-  const { data, error } = await supabaseClient.rpc("get_low_bid", {
-    p_bid_id: bidId
-  });
-
-  if (error) {
-    console.error("Low bid error:", error);
-    return null;
-  }
-
-  return Array.isArray(data) ? data[0] || null : data || null;
-}
 
 async function getMyBid(bidId) {
   if (currentProfile.role !== "vendor") {
@@ -595,6 +850,7 @@ async function getAdminSubmissions(bidId) {
 
   if (error) {
     console.error("Admin submissions error:", error);
+
     return {
       error: error.message,
       rows: []
@@ -607,6 +863,32 @@ async function getAdminSubmissions(bidId) {
   };
 }
 
+async function getLowBid(bidId, isAdmin, submissionsResult) {
+  /*
+    Admin already has all submissions, so no RPC is needed.
+  */
+  if (isAdmin) {
+    return submissionsResult?.rows?.[0] || null;
+  }
+
+  /*
+    Vendors use the secure get_low_bid RPC.
+    It should return only amount, not vendor identity.
+  */
+  const { data, error } = await supabaseClient.rpc("get_low_bid", {
+    p_bid_id: bidId
+  });
+
+  if (error) {
+    console.error("Low bid RPC error:", error);
+    return null;
+  }
+
+  return Array.isArray(data)
+    ? data[0] || null
+    : data || null;
+}
+
 function buildLowBidHTML(lowBid, isAdmin, vendorHasBid, finalized) {
   if (isAdmin) {
     if (!lowBid) {
@@ -614,25 +896,31 @@ function buildLowBidHTML(lowBid, isAdmin, vendorHasBid, finalized) {
     }
 
     const vendorName =
+      lowBid.vendor?.vendor_name ||
+      lowBid.vendor?.email ||
       lowBid.vendor_name ||
-      lowBid.email ||
       "";
 
     return `
       <p class="low-bid">
-        Current Low Bid: $${Number(lowBid.amount).toFixed(2)}
+        Current Low Bid:
+        $${Number(lowBid.amount).toFixed(2)}
         ${vendorName ? ` - ${escapeHTML(vendorName)}` : ""}
       </p>
     `;
   }
 
+  /*
+    Vendors only see the current low amount after submitting.
+  */
   if (!vendorHasBid || finalized || !lowBid) {
     return "";
   }
 
   return `
     <p class="low-bid">
-      Current Low Bid: $${Number(lowBid.amount).toFixed(2)}
+      Current Low Bid:
+      $${Number(lowBid.amount).toFixed(2)}
     </p>
   `;
 }
@@ -745,7 +1033,8 @@ function vendorBidHTML(bid, myBid) {
 
       <button
         type="button"
-        onclick="submitBid(${bid.id})"
+        data-action="submit-bid"
+        data-bid-id="${bid.id}"
       >
         ${myBid ? "Update Bid" : "Submit Bid"}
       </button>
@@ -759,11 +1048,12 @@ async function submitBid(bidId) {
     return;
   }
 
-  const amountInput = document.getElementById(`amount-${bidId}`);
-  const notesInput = document.getElementById(`notes-${bidId}`);
+  const amount = Number(
+    document.getElementById(`amount-${bidId}`)?.value
+  );
 
-  const amount = Number(amountInput?.value);
-  const notes = notesInput?.value.trim() || "";
+  const notes =
+    document.getElementById(`notes-${bidId}`)?.value.trim() || "";
 
   if (!Number.isFinite(amount) || amount <= 0) {
     alert("Enter a valid bid amount.");
@@ -820,7 +1110,7 @@ async function submitBid(bidId) {
 }
 
 /* =========================================================
-   ADMIN CONTROLS
+   ADMIN AREA
 ========================================================= */
 
 function adminBidHTML(bid, submissionsResult) {
@@ -835,7 +1125,8 @@ function adminBidHTML(bid, submissionsResult) {
         <button
           type="button"
           class="warning"
-          onclick="editBid(${bid.id})"
+          data-action="edit-bid"
+          data-bid-id="${bid.id}"
         >
           Edit Bid
         </button>
@@ -846,7 +1137,8 @@ function adminBidHTML(bid, submissionsResult) {
       <button
         type="button"
         class="gray"
-        onclick="closeBid(${bid.id})"
+        data-action="close-bid"
+        data-bid-id="${bid.id}"
       >
         Close Bid
       </button>
@@ -854,7 +1146,8 @@ function adminBidHTML(bid, submissionsResult) {
       <button
         type="button"
         class="success"
-        onclick="finalizeBid(${bid.id})"
+        data-action="finalize-bid"
+        data-bid-id="${bid.id}"
       >
         Finalize Bid
       </button>
@@ -865,7 +1158,8 @@ function adminBidHTML(bid, submissionsResult) {
         <button
           type="button"
           class="danger"
-          onclick="deleteBid(${bid.id})"
+          data-action="delete-bid"
+          data-bid-id="${bid.id}"
         >
           Delete Bid
         </button>
@@ -904,6 +1198,7 @@ function adminBidHTML(bid, submissionsResult) {
             <th>Result / Action</th>
           </tr>
         </thead>
+
         <tbody>
   `;
 
@@ -931,7 +1226,9 @@ function adminBidHTML(bid, submissionsResult) {
         <button
           type="button"
           class="success"
-          onclick="awardBid(${bid.id}, ${submission.id})"
+          data-action="award-bid"
+          data-bid-id="${bid.id}"
+          data-submission-id="${submission.id}"
         >
           Selected Winner
         </button>
@@ -940,7 +1237,9 @@ function adminBidHTML(bid, submissionsResult) {
       actionHTML = `
         <button
           type="button"
-          onclick="awardBid(${bid.id}, ${submission.id})"
+          data-action="award-bid"
+          data-bid-id="${bid.id}"
+          data-submission-id="${submission.id}"
         >
           Select
         </button>
@@ -1157,23 +1456,17 @@ function normalizeTimeForInput(value) {
 
   const parts = String(value).split(":");
 
-  if (parts.length < 2) {
-    return "";
-  }
-
-  return `${pad2(parts[0])}:${pad2(parts[1])}`;
+  return parts.length >= 2
+    ? `${pad2(parts[0])}:${pad2(parts[1])}`
+    : "";
 }
 
 function formatDate(value) {
   if (!value) return "";
 
-  const parts = String(value).split("-").map(Number);
+  const [year, month, day] =
+    String(value).split("-").map(Number);
 
-  if (parts.length !== 3) {
-    return escapeHTML(value);
-  }
-
-  const [year, month, day] = parts;
   const date = new Date(year, month - 1, day);
 
   return Number.isNaN(date.getTime())
@@ -1217,13 +1510,14 @@ function formatTime(value) {
   }
 
   const period = hour >= 12 ? "PM" : "AM";
+
   hour = hour % 12 || 12;
 
   return `${hour}:${minute} ${period}`;
 }
 
 /* =========================================================
-   SMALL HELPERS
+   HELPERS
 ========================================================= */
 
 function valueOf(id) {
@@ -1242,6 +1536,13 @@ function pad2(value) {
   return String(value).padStart(2, "0");
 }
 
+function setButtonBusy(button, busy, text) {
+  if (!button) return;
+
+  button.disabled = busy;
+  button.textContent = text;
+}
+
 function escapeHTML(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -1252,6 +1553,10 @@ function escapeHTML(value) {
 }
 '''
 
-path = Path("/mnt/data/script.js")
-path.write_text(script, encoding="utf-8")
-print(f"Created {path} with {len(script.splitlines())} lines.")
+out = Path("/mnt/data/transportation_bidding_clean")
+out.mkdir(exist_ok=True)
+(out/"index.html").write_text(html, encoding="utf-8")
+(out/"script.js").write_text(js, encoding="utf-8")
+
+print("Created:", out/"index.html")
+print("Created:", out/"script.js")
