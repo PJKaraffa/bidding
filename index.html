@@ -2,116 +2,192 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
   <title>Transportation Bidding System</title>
+
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
-  <section id="loginPage" class="login-card">
+
+  <!-- LOGIN PAGE -->
+
+  <div id="loginPage" class="login-card">
+
     <h1>Transportation Bidding</h1>
-    <h2>Administrator / Vendor Login</h2>
+    <h2>Staff / Vendor Login</h2>
 
-    <label class="sr-only" for="email">Email</label>
-    <input id="email" type="email" placeholder="Email" autocomplete="username">
+    <input
+      id="email"
+      type="email"
+      placeholder="Email"
+    >
 
-    <label class="sr-only" for="password">Password</label>
-    <input id="password" type="password" placeholder="Password" autocomplete="current-password">
+    <input
+      id="password"
+      type="password"
+      placeholder="Password"
+    >
 
-    <button type="button" onclick="login()">Login</button>
-    <p id="loginMessage" aria-live="polite"></p>
-  </section>
+    <button type="button" onclick="login()">
+      Login
+    </button>
+
+    <p id="loginMessage"></p>
+
+  </div>
+
+  <!-- APPLICATION -->
 
   <div id="appPage" class="hidden">
+
     <header>
+
       <div>
         <h1>Transportation Bidding System</h1>
         <p id="welcomeMessage"></p>
       </div>
-      <button type="button" class="header-button" onclick="logout()">Logout</button>
+
+      <button type="button" onclick="logout()">
+        Logout
+      </button>
+
     </header>
 
     <main>
+
+      <!-- ADMIN CREATE BID -->
+
       <section id="adminPanel" class="card hidden">
-        <div class="section-heading">
+
+        <h2>Create Transportation Bid</h2>
+
+        <input
+          id="bidTitle"
+          type="text"
+          placeholder="Bid Title"
+        >
+
+        <textarea
+          id="bidDescription"
+          placeholder="Bid Description / Notes"
+        ></textarea>
+
+        <div class="grid">
+
+          <input
+            id="studentId"
+            type="text"
+            placeholder="Student ID"
+          >
+
+          <input
+            id="streetAddress"
+            type="text"
+            placeholder="Street Address"
+          >
+
+        </div>
+
+        <div class="grid">
+
           <div>
-            <h2 id="bidFormHeading">Create Transportation Bid</h2>
-            <p id="editMessage" class="edit-message hidden">You are editing an existing bid.</p>
+            <label for="pickupTime">
+              Pickup Time
+            </label>
+
+            <input
+              id="pickupTime"
+              type="time"
+            >
           </div>
+
+          <div>
+            <label for="schoolStartTime">
+              School Start Time
+            </label>
+
+            <input
+              id="schoolStartTime"
+              type="time"
+            >
+          </div>
+
         </div>
 
-        <div class="form-grid two-columns">
-          <div class="field full-width">
-            <label for="bidTitle">Bid Title</label>
-            <input id="bidTitle" placeholder="Bid Title">
+        <input
+          id="school"
+          type="text"
+          placeholder="School"
+        >
+
+        <div class="grid">
+
+          <div>
+            <label for="serviceDate">
+              Service Date
+            </label>
+
+            <input
+              id="serviceDate"
+              type="date"
+            >
           </div>
 
-          <div class="field full-width">
-            <label for="bidDescription">Description / Notes</label>
-            <textarea id="bidDescription" placeholder="Bid description or transportation notes"></textarea>
+          <div>
+            <label for="bidOpenDate">
+              Bid Opens
+            </label>
+
+            <input
+              id="bidOpenDate"
+              type="datetime-local"
+            >
           </div>
 
-          <div class="field">
-            <label for="studentId">Student ID</label>
-            <input id="studentId" placeholder="Student ID">
+          <div>
+            <label for="bidCloseDate">
+              Bid Closes
+            </label>
+
+            <input
+              id="bidCloseDate"
+              type="datetime-local"
+            >
           </div>
 
-          <div class="field">
-            <label for="streetAddress">Street Address</label>
-            <input id="streetAddress" placeholder="Pickup street address">
-          </div>
-
-          <div class="field">
-            <label for="pickupTime">Pickup Time</label>
-            <input id="pickupTime" type="time">
-          </div>
-
-          <div class="field">
-            <label for="school">School</label>
-            <input id="school" placeholder="School">
-          </div>
-
-          <div class="field">
-            <label for="schoolStartTime">School Start Time</label>
-            <input id="schoolStartTime" type="time">
-          </div>
-
-          <div class="field">
-            <label for="serviceDate">Service Date</label>
-            <input id="serviceDate" type="date">
-          </div>
-
-          <div class="field">
-            <label for="bidOpenDate">Bid Opens</label>
-            <input id="bidOpenDate" type="datetime-local">
-          </div>
-
-          <div class="field">
-            <label for="bidCloseDate">Bid Closes</label>
-            <input id="bidCloseDate" type="datetime-local">
-          </div>
         </div>
 
-        <div class="form-actions">
-          <button id="saveBidButton" type="button" onclick="saveBid()">Post Bid</button>
-          <button id="cancelEditButton" type="button" class="gray hidden" onclick="cancelBidEdit()">Cancel Edit</button>
-        </div>
+        <button type="button" onclick="createBid()">
+          Post Bid
+        </button>
+
       </section>
+
+      <!-- TRANSPORTATION BIDS -->
 
       <section class="card">
+
         <h2>Transportation Bids</h2>
-        <div id="bidsList" aria-live="polite"></div>
+
+        <div id="bidsList"></div>
+
       </section>
+
     </main>
+
   </div>
 
- <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase-config.js?v=15"></script>
-<script src="script.js?v=15"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<script>
-  console.log("Supabase library:", typeof supabase);
-  console.log("Supabase client:", typeof supabaseClient);
-  console.log("Login function:", typeof login);
-</script>
+  <script src="supabase-config.js"></script>
+
+  <script src="script.js"></script>
+
 </body>
 </html>
