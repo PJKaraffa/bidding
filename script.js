@@ -799,42 +799,67 @@ function toggleBid(bidId) {
 ========================================================= */
 
 async function getLowBid(bidId) {
+  /*
+    Administrators can read the full submission directly,
+    including the vendor name.
+  */
+  if (currentProfile.role === "admin") {
+    const { data, error } = await supabaseClient
+      .from("bid_submissions")
+      .select(`
+        id,
+        bid_id,
+        vendor_id,
+        amount,
+        notes,
+        created_at,
+        profiles:vendor_id (
+          email,
+          vendor_name
+        )
+      `)
+      .eq("bid_id", bidId)
+      .order("amount", {
+        ascending: true
+      })
+      .order("created_at", {
+        ascending: true
+      })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.error(
+        "Administrator low bid error:",
+        error.message
+      );
+
+      return null;
+    }
+
+    return data;
+  }
+
+  /*
+    Vendors receive only the lowest amount.
+    No vendor ID, email, or company name is returned.
+  */
   const { data, error } = await supabaseClient
-    .from("bid_submissions")
-    .select(`
-      id,
-      bid_id,
-      vendor_id,
-      amount,
-      notes,
-      created_at,
-      profiles:vendor_id (
-        email,
-        vendor_name
-      )
-    `)
-    .eq("bid_id", bidId)
-    .order("amount", {
-      ascending: true
-    })
-    .order("created_at", {
-      ascending: true
-    })
-    .limit(1)
-    .maybeSingle();
+    .rpc("get_low_bid", {
+      p_bid_id: bidId
+    });
 
   if (error) {
     console.error(
-      "Low bid error:",
+      "Vendor low bid error:",
       error.message
     );
 
     return null;
   }
 
-  return data;
+  return data?.[0] || null;
 }
-
 /* =========================================================
    WINNING BID
 ========================================================= */
