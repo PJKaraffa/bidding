@@ -508,25 +508,25 @@ async function loadBids() {
     /* VENDOR LOW BID */
 
     if (
-      isVendor &&
-      myBid &&
-      !isFinalized &&
-      lowBid
-    ) {
-      lowBidHTML = `
-        <p class="low-bid">
-          Current Low Bid:
-          $${Number(lowBid.amount).toFixed(2)}
-        </p>
-      `;
-    }
-
-    if (
-      isVendor &&
-      !myBid
-    ) {
-      lowBidHTML = "";
-    }
+  isVendor &&
+  !isFinalized
+) {
+  if (lowBid) {
+    lowBidHTML = `
+      <p class="low-bid">
+        Current Low Bid:
+        $${Number(lowBid.amount).toFixed(2)}
+      </p>
+    `;
+  } else {
+    lowBidHTML = `
+      <p class="low-bid">
+        Current Low Bid:
+        No bids yet
+      </p>
+    `;
+  }
+}
 
     /* VENDOR FINAL RESULT */
 
