@@ -52,34 +52,175 @@ select {
    LOGIN
 ========================================================= */
 
-.login-card {
-  width: 430px;
-  max-width: 94%;
-  margin: 90px auto;
-  padding: 36px;
-  background: #ffffff;
-  border-radius: 16px;
-  box-shadow: 0 12px 35px rgba(15, 23, 42, 0.16);
+/* =========================================================
+   PROFESSIONAL LOGIN PAGE
+========================================================= */
+
+body {
+  min-height: 100vh;
+  background:
+    linear-gradient(
+      135deg,
+      #eaf1ff 0%,
+      #f8fafc 45%,
+      #e2e8f0 100%
+    );
+}
+
+#loginPage {
+  position: relative;
+  width: 440px;
+  max-width: calc(100% - 32px);
+  margin: 70px auto;
+  padding: 42px 38px 36px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow:
+    0 24px 60px rgba(15, 23, 42, 0.16),
+    0 4px 14px rgba(15, 23, 42, 0.08);
   text-align: center;
 }
 
-.login-card h1 {
-  margin-bottom: 6px;
-  color: #1d4ed8;
-  font-size: 30px;
+#loginPage::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 7px;
+  background: linear-gradient(
+    90deg,
+    #1d4ed8,
+    #2563eb,
+    #38bdf8
+  );
 }
 
-.login-card h2 {
-  margin-bottom: 24px;
-  color: #475569;
-  font-size: 20px;
+#loginPage::after {
+  content: "Transportation Services";
+  display: inline-block;
+  margin-bottom: 14px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+}
+
+#loginPage h1 {
+  margin: 0 0 7px;
+  color: #0f172a;
+  font-size: 31px;
+  line-height: 1.15;
+  letter-spacing: -0.5px;
+}
+
+#loginPage h2 {
+  margin: 0 0 28px;
+  color: #64748b;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+#loginPage input {
+  width: 100%;
+  height: 48px;
+  margin: 0 0 13px;
+  padding: 0 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #0f172a;
+  font-size: 15px;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+#loginPage input::placeholder {
+  color: #94a3b8;
+}
+
+#loginPage input:focus {
+  border-color: #2563eb;
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.13);
+  outline: none;
+}
+
+#loginPage button {
+  width: 100%;
+  height: 48px;
+  margin-top: 6px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(
+    135deg,
+    #1d4ed8,
+    #2563eb
+  );
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.24);
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.2s ease,
+    filter 0.2s ease;
+}
+
+#loginPage button:hover {
+  filter: brightness(1.05);
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.3);
+  transform: translateY(-1px);
+}
+
+#loginPage button:active {
+  transform: translateY(0);
 }
 
 #loginMessage {
-  min-height: 20px;
-  margin-top: 12px;
+  min-height: 22px;
+  margin: 14px 0 0;
   color: #b91c1c;
+  font-size: 14px;
   font-weight: 700;
+}
+
+/* Optional professional footer text */
+
+#loginPage .login-footer {
+  margin-top: 20px;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+/* =========================================================
+   MOBILE LOGIN
+========================================================= */
+
+@media (max-width: 500px) {
+  #loginPage {
+    margin: 34px auto;
+    padding: 36px 24px 30px;
+    border-radius: 18px;
+  }
+
+  #loginPage h1 {
+    font-size: 26px;
+  }
+
+  #loginPage h2 {
+    font-size: 16px;
+  }
 }
 
 /* =========================================================
