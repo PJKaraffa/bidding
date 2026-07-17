@@ -637,13 +637,13 @@ button.warning:hover {
   text-align: center;
 }
 
-.result-won {
+.result-ACCEPTED {
   border: 2px solid #166534;
   background: #15803d;
   color: #ffffff;
 }
 
-.result-lost {
+.result-DENIED {
   border: 2px solid #991b1b;
   background: #dc2626;
   color: #ffffff;
