@@ -690,13 +690,13 @@ async function loadBids() {
         Number(myBid.id)
       ) {
         summaryHTML = `
-          <span class="result-label result-won">
+          <span class="result-label result-ACCEPTED">
             ACCEPTED
           </span>
         `;
       } else {
         summaryHTML = `
-          <span class="result-label result-lost">
+          <span class="result-label result-DENIED">
             DENIED
           </span>
         `;
@@ -1565,13 +1565,13 @@ async function adminBidHTML(bid) {
         actionHTML =
           isWinner
             ? `
-              <span class="result-label result-won">
-                WON
+              <span class="result-label result-ACCEPTED">
+                ACCEPTED
               </span>
             `
             : `
-              <span class="result-label result-lost">
-                LOST
+              <span class="result-label result-DENIED">
+                DENIED
               </span>
             `;
       } else if (isWinner) {
