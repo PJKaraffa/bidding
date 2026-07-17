@@ -691,13 +691,13 @@ async function loadBids() {
       ) {
         summaryHTML = `
           <span class="result-label result-won">
-            WON
+            ACCEPTED
           </span>
         `;
       } else {
         summaryHTML = `
           <span class="result-label result-lost">
-            LOST
+            DENIED
           </span>
         `;
       }
@@ -721,7 +721,7 @@ async function loadBids() {
           <div class="finalized-summary">
 
             <span class="result-label result-won">
-              WON
+              ACCEPTED
             </span>
 
             ${escapeHTML(winnerName)}
